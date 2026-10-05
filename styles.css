@@ -244,3 +244,6 @@ nav a:focus-visible { outline-color: #fff; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 @media (min-width: 700px) { #app { padding-top: 40px; } }
+
+.code-in { width: 100%; min-height: 52px; border-radius: 16px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); font: 700 18px ui-monospace, Menlo, monospace; padding: 0 14px; letter-spacing: .04em; }
+.code-show { font: 800 20px ui-monospace, Menlo, monospace; letter-spacing: .06em; padding: 14px; border-radius: 16px; background: var(--bg); word-break: break-all; user-select: all; }

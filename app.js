@@ -45,7 +45,7 @@ const fmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(
 
 /* ---------- Données et état ---------- */
 let PLAN, SESSIONS, WEEKS;
-let state = { done: {}, skipped: {} };
+let state = { done: {}, skipped: {}, u: {} }; // u : date de dernière modification par séance (pour la synchro)
 let TODAY = todayStr();
 
 function load() {
@@ -56,14 +56,33 @@ function load() {
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignoré */ }
+  schedulePush();
 }
+const touch = id => { state.u[id] = Date.now(); };
 function normalize(o) {
   const ids = new Set(SESSIONS ? SESSIONS.map(s => s.id) : []);
-  const r = { done: {}, skipped: {} };
+  const r = { done: {}, skipped: {}, u: {} };
   for (const [id, v] of Object.entries((o && o.done) || {})) {
     if (!ids.size || ids.has(id)) r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null };
   }
   for (const id of Object.keys((o && o.skipped) || {})) if (!ids.size || ids.has(id)) r.skipped[id] = true;
+  const u = (o && o.u) || {};
+  for (const id of new Set([...Object.keys(r.done), ...Object.keys(r.skipped), ...Object.keys(u)])) {
+    if (ids.size && !ids.has(id)) continue;
+    const t = r.done[id] && Date.parse(r.done[id].t);
+    r.u[id] = Number(u[id]) || (Number.isFinite(t) ? t : 0);
+  }
+  return r;
+}
+// Fusion : pour chaque séance, la modification la plus récente gagne (une annulation compte comme une modification).
+function mergeStates(a, b) {
+  const r = { done: {}, skipped: {}, u: {} };
+  for (const id of new Set([...Object.keys(a.u), ...Object.keys(b.u)])) {
+    const src = (a.u[id] || 0) >= (b.u[id] || 0) ? a : b;
+    r.u[id] = src.u[id] || 0;
+    if (src.done[id]) r.done[id] = { ...src.done[id] };
+    else if (src.skipped[id]) r.skipped[id] = true;
+  }
   return r;
 }
 
@@ -415,8 +434,10 @@ function viewMore() {
     <p class="muted">Étape suivante possible : une petite app iPhone native qui envoie chaque séance vers l’app Entraînement de la montre.</p>
   </div></details>
 
-  <details class="acc" id="sauvegarde"><summary>Sauvegarde</summary><div class="acc-body">
-    <p>Ta progression reste sur cet appareil. Exporte-la pour la retrouver sur un autre.</p>
+  <details class="acc" id="sauvegarde"><summary>Synchro et sauvegarde</summary><div class="acc-body">
+    ${syncPanel()}
+    <h3>Sauvegarde manuelle</h3>
+    <p class="small muted">Copie ta progression pour la coller ailleurs, ou importe-en une.</p>
     <textarea class="io" id="io" aria-label="Progression au format JSON" spellcheck="false"></textarea>
     <div class="btns"><button class="btn small" data-a="export">Exporter</button><button class="btn small line" data-a="copy">Copier</button><button class="btn small line" data-a="import">Importer</button></div>
     <p class="small muted" id="io-msg" role="status"></p>
@@ -424,6 +445,55 @@ function viewMore() {
   </div></details>
   <p class="small muted" style="margin-top:20px">Ce plan est général. Il ne remplace pas l’avis de ton kiné.</p>`;
 }
+
+/* ---------- Synchronisation (Upstash via /api/sync) ---------- */
+const CODE_KEY = 'marathon27:code';
+let syncInfo = { text: '', busy: false };
+const getCode = () => { try { return localStorage.getItem(CODE_KEY) || ''; } catch (e) { return ''; } };
+const setCode = c => { try { c ? localStorage.setItem(CODE_KEY, c) : localStorage.removeItem(CODE_KEY); } catch (e) { /* ignoré */ } };
+function newCode() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', b = crypto.getRandomValues(new Uint8Array(20));
+  const c = [...b].map(x => A[x % A.length]).join('');
+  return c.match(/.{5}/g).join('-');
+}
+const codeOk = c => /^[A-Za-z0-9-]{16,64}$/.test(c);
+function syncPanel() {
+  const code = getCode();
+  if (!code) return `<p>Pour retrouver la même progression sur ton téléphone et ton ordinateur, crée un code, puis saisis-le sur l’autre appareil.</p>
+    <div class="btns"><button class="btn small" data-a="sync-new">Créer mon code</button></div>
+    <label class="small muted" for="code-in">Tu as déjà un code ?</label>
+    <input class="code-in" id="code-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX-XXXXX-XXXXX">
+    <div class="btns"><button class="btn small line" data-a="sync-join">Connecter cet appareil</button></div>
+    <p class="small muted" id="sync-msg" role="status">${esc(syncInfo.text)}</p>`;
+  return `<p><b>Synchro active.</b> Garde ce code : il ouvre ta progression, ne le partage pas.</p>
+    <div class="code-show">${esc(code)}</div>
+    <div class="btns"><button class="btn small line" data-a="sync-copy">Copier</button><button class="btn small" data-a="sync-now">Synchroniser</button><button class="btn small line" data-a="sync-off">Déconnecter</button></div>
+    <p class="small muted" id="sync-msg" role="status">${esc(syncInfo.text)}</p>`;
+}
+const syncMsg = t => { syncInfo.text = t; const m = $('#sync-msg'); if (m) m.textContent = t; };
+async function api(code, body) {
+  const r = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, ...body }) });
+  if (!r.ok) throw new Error('http ' + r.status);
+  return r.json();
+}
+async function syncNow(quiet) {
+  const code = getCode(); if (!code || syncInfo.busy) return;
+  syncInfo.busy = true;
+  try {
+    const { state: remote } = await api(code, { action: 'get' });
+    const before = JSON.stringify(state);
+    state = mergeStates(state, normalize(remote || {}));
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignoré */ }
+    await api(code, { action: 'put', state });
+    syncMsg('Synchronisé à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '.');
+    if (JSON.stringify(state) !== before) render();
+  } catch (e) {
+    syncMsg(quiet ? 'Hors ligne : ce sera synchronisé plus tard.' : 'Synchro impossible pour l’instant. Réessaie, ta progression reste sur cet appareil.');
+  } finally { syncInfo.busy = false; }
+}
+let pushTimer;
+function schedulePush() { if (!getCode()) return; clearTimeout(pushTimer); pushTimer = setTimeout(() => syncNow(true), 900); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(true); });
 
 /* ---------- Bottom sheet : ressenti des genoux ---------- */
 function openKnee(id, fresh) {
@@ -464,19 +534,28 @@ const icsEsc = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replac
 
 /* ---------- Actions ---------- */
 function toggle(id) {
-  if (state.done[id]) { delete state.done[id]; save(); render(); return; }
-  delete state.skipped[id];
+  if (state.done[id]) { delete state.done[id]; touch(id); save(); render(); return; }
+  delete state.skipped[id]; touch(id);
   state.done[id] = { t: new Date().toISOString(), knee: null };
   save(); render();
   openKnee(id, true);
 }
 const actions = {
+  'sync-new': () => { setCode(newCode()); syncMsg(''); render(); syncNow(); },
+  'sync-join': () => {
+    const c = ($('#code-in').value || '').trim().toUpperCase();
+    if (!codeOk(c)) return syncMsg('Ce code n’a pas le bon format.');
+    setCode(c); render(); syncNow();
+  },
+  'sync-copy': async () => { try { await navigator.clipboard.writeText(getCode()); syncMsg('Code copié.'); } catch (e) { syncMsg('Copie-le à la main.'); } },
+  'sync-now': () => syncNow(),
+  'sync-off': () => { if (confirm('Déconnecter cet appareil ? Ta progression reste ici, mais ne se synchronise plus.')) { setCode(''); syncMsg(''); render(); } },
   toggle: e => toggle(e.dataset.id),
-  skip: e => { state.skipped[e.dataset.id] = true; save(); render(); },
+  skip: e => { state.skipped[e.dataset.id] = true; touch(e.dataset.id); save(); render(); },
   knee: e => openKnee(e.dataset.id, false),
   'close-sheet': (e, ev) => { if (ev.target === e) closeSheet(); },
   'set-knee': e => {
-    const id = e.dataset.id; if (state.done[id]) state.done[id].knee = e.dataset.k;
+    const id = e.dataset.id; if (state.done[id]) { state.done[id].knee = e.dataset.k; touch(id); }
     save(); closeSheet(); render();
   },
   pick: e => { selectedWeek = +e.dataset.n; render(); const g = document.querySelector(`[data-a="pick"][data-n="${selectedWeek}"]`); if (g) g.focus(); },
@@ -495,10 +574,10 @@ const actions = {
     try {
       const data = JSON.parse($('#io').value);
       if (!data || typeof data.done !== 'object') throw new Error();
-      state = normalize(data); save(); msg(`Importé : ${Object.keys(state.done).length} séances validées.`);
+      state = normalize(data); SESSIONS.forEach(x => touch(x.id)); save(); msg(`Importé : ${Object.keys(state.done).length} séances validées.`);
     } catch (e) { msg('Ce texte n’est pas une sauvegarde valide.'); }
   },
-  reset: () => { if (confirm('Effacer toute la progression de cet appareil ?')) { state = { done: {}, skipped: {} }; save(); msg('Progression effacée.'); } },
+  reset: () => { if (confirm('Effacer toute la progression de cet appareil ?')) { state = { done: {}, skipped: {}, u: {} }; SESSIONS.forEach(x => touch(x.id)); save(); msg('Progression effacée.'); } },
 };
 const msg = t => { const m = $('#io-msg'); if (m) m.textContent = t; };
 
@@ -535,6 +614,7 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
     SESSIONS = WEEKS.flatMap(w => w.sessions);
     load();
     render();
+    syncNow(true);
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   } catch (e) {
     $('#app').innerHTML = '<p style="padding:24px">Impossible de charger le plan. Vérifie ta connexion et recharge la page.</p>';
