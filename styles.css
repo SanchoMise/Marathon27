@@ -64,12 +64,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .small { font-size: 14px; }
 
 /* ---------- Header / compte à rebours ---------- */
-.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.count { display: flex; align-items: baseline; gap: 10px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.count { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .count .num { font-size: clamp(84px, 27vw, 128px); background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: 4px; }
-.count .lbl { font-size: 15px; font-weight: 700; line-height: 1.15; color: var(--ink-soft); }
-.logo { white-space: nowrap; font-weight: 800; font-stretch: 70%; font-size: 26px; letter-spacing: -.02em; line-height: 1; text-align: right; }
-.logo span { display: block; font-size: 12px; font-stretch: 100%; letter-spacing: .02em; color: var(--ink-soft); font-weight: 600; margin-top: 4px; }
+.count .lbl { font-size: 16px; font-weight: 700; line-height: 1.15; color: var(--ink-soft); }
+.logo { white-space: nowrap; font-weight: 800; font-stretch: 70%; font-size: 44px; letter-spacing: -.02em; line-height: 1; text-align: right; }
+.logo span { display: block; font-size: 15px; font-stretch: 100%; letter-spacing: .02em; color: var(--ink-soft); font-weight: 600; margin-top: 4px; }
 
 /* ---------- Cartes séance ---------- */
 .card {
@@ -107,8 +107,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .done-badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 20px; color: var(--on); }
 
 /* ---------- Message d'encouragement ---------- */
-.cheer { margin-top: 14px; padding: 16px 18px; border-radius: 22px; background: var(--surface); border-left: 6px solid var(--orange); font-size: 18px; font-weight: 600; line-height: 1.3; }
-.cheer b { font-weight: 800; }
+.quote { margin: 22px 0 0; padding: 26px 22px 24px; border-radius: 28px; background: var(--grad); color: #fff; position: relative; overflow: hidden; }
+.quote::before { content: '“'; position: absolute; right: 14px; top: -28px; font-size: 190px; font-weight: 800; line-height: 1; color: rgba(255,255,255,.22); font-family: Georgia, serif; }
+.quote figcaption { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .9; margin-bottom: 10px; position: relative; }
+.quote blockquote { margin: 0; font-size: 28px; font-weight: 800; font-stretch: 80%; letter-spacing: -.01em; line-height: 1.08; position: relative; text-shadow: 0 1px 12px rgba(7,20,63,.35); }
 
 /* ---------- Alertes genou ---------- */
 .alert { margin: 0 0 14px; padding: 16px 18px; border-radius: 22px; border: 3px solid var(--alert); background: var(--surface); }
@@ -164,7 +166,7 @@ details.week > summary {
 details.week > summary::-webkit-details-marker { display: none; }
 .wnum { font-size: 44px; font-weight: 800; font-stretch: 68%; letter-spacing: -.03em; line-height: .9; min-width: 52px; }
 .wmeta { font-weight: 800; font-size: 17px; line-height: 1.15; }
-.wmeta span { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.wmeta .wsub { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
 .tagpill { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--peach); color: var(--navy); margin-left: 6px; vertical-align: 2px; }
 .wprog { font-weight: 800; font-stretch: 80%; font-size: 20px; text-align: right; }
 .wprog .dots { display: flex; gap: 4px; justify-content: flex-end; margin-top: 6px; }

@@ -205,7 +205,8 @@ function viewToday() {
   const list = SESSIONS.filter(counts);
   const todays = list.find(s => s.date === TODAY);
   const upcoming = list.filter(s => s.date >= TODAY && !isDone(s.id) && !state.skipped[s.id]);
-  const hero = todays || upcoming[0];
+  const doneToday = todays && isDone(todays.id) ? todays : null;
+  const hero = todays && !doneToday ? todays : upcoming[0];
   const late = list.filter(s => s.date < TODAY && !isDone(s.id) && !state.skipped[s.id]);
   const nextUp = upcoming.filter(s => !hero || s.id !== hero.id).slice(0, 2);
 
@@ -214,7 +215,7 @@ function viewToday() {
 
   let html = `<header class="top">
     <div class="count"><span class="num display" aria-hidden="true">${days}</span>
-      <span class="lbl"><span class="sr">${days} </span>${days > 1 ? 'jours' : 'jour'}<br>avant le marathon<br><span class="muted">dim. 4 avril 2027</span></span></div>
+      <span class="lbl"><span class="sr">${days} </span>${days > 1 ? 'jours' : 'jour'} avant le marathon<br><span class="muted">dim. 4 avril 2027</span></span></div>
     <div class="logo">M27<span>Sem. ${cw.n} / 26</span></div>
   </header>`;
 
@@ -223,14 +224,15 @@ function viewToday() {
     html += `<div class="note"><b>Deux séances passées cette semaine.</b> Pas de souci : tu reprends la semaine précédente, sans rien rattraper.</div>`;
   }
 
-  if (hero) html += heroCard(hero, todays === hero);
-  else html += `<div class="card t-rest hero"><h2>Tout est validé pour l’instant.</h2></div>`;
-
-  if (hero && isDone(hero.id)) {
-    html += `<p class="cheer">${esc(cheerFor(hero))}</p>`;
-  } else {
-    html += `<p class="cheer">${esc(pick(DAILY, TODAY))}</p>`;
+  if (doneToday) {
+    html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Faite aujourd’hui</h2></div><div class="list">${sessionRow(doneToday)}</div>${cheerCard(cheerFor(doneToday), true)}`;
   }
+  if (hero) {
+    if (doneToday) html += `<div class="block-title" style="margin:22px 0 8px"><h2 class="h2">Ensuite</h2></div>`;
+    html += heroCard(hero, todays === hero);
+  } else html += `<div class="card t-rest hero"><h2>Tout est validé pour l’instant.</h2></div>`;
+
+  if (!doneToday) html += cheerCard(pick(DAILY, TODAY), false);
 
   html += contextNotes(cw);
   if (late.length) {
@@ -245,9 +247,13 @@ function viewToday() {
     <p class="small muted" style="margin-top:8px">${tot.done} séances validées sur ${tot.total}</p></section>`;
 
   if (nextUp.length) {
-    html += `<section class="block"><div class="block-title"><h2 class="h2">Ensuite</h2></div><div class="list">${nextUp.map(s => sessionRow(s)).join('')}</div></section>`;
+    html += `<section class="block"><div class="block-title"><h2 class="h2">Puis</h2></div><div class="list">${nextUp.map(s => sessionRow(s)).join('')}</div></section>`;
   }
   return html;
+}
+
+function cheerCard(text, after) {
+  return `<figure class="quote"><figcaption>${after ? 'Bien joué' : 'Un mot pour toi'}</figcaption><blockquote>${esc(text)}</blockquote></figure>`;
 }
 
 function heroCard(s, isToday) {
@@ -309,7 +315,7 @@ function viewPlan() {
       const isCur = cw && w.n === cw.n;
       return `<details class="week ${isCur ? 'current' : ''}" ${isCur ? 'open' : ''} id="w${w.n}">
         <summary><span class="wnum display">${w.n}</span>
-          <span class="wmeta">${fmtDate(w.start, { day: 'numeric', month: 'short' })} · ${w.phase}${w.allegee ? '<span class="tagpill">allégée</span>' : ''}${w.tag && !w.allegee ? `<span>${esc(w.tag)}</span>` : `<span>${w.allegee ? 'On ne la saute pas' : '&nbsp;'}</span>`}</span>
+          <span class="wmeta">${fmtDate(w.start, { day: 'numeric', month: 'short' })} · ${w.phase}${w.allegee ? '<span class="tagpill">allégée</span>' : ''}${w.tag && !w.allegee ? `<span class="wsub">${esc(w.tag)}</span>` : `<span class="wsub">${w.allegee ? 'On ne la saute pas' : '&nbsp;'}</span>`}</span>
           <span class="wprog">${st.done}/${st.total}<span class="dots" aria-hidden="true">${Array.from({ length: st.total }, (_, i) => `<i class="${i < st.done ? 'on' : ''}"></i>`).join('')}</span></span></summary>
         <div class="list">${w.sessions.map(s => sessionRow(s)).join('')}</div></details>`;
     }).join('')}</div>`;
