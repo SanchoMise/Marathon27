@@ -243,7 +243,7 @@ function viewToday() {
   }
 
   if (doneToday) {
-    html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Faite aujourd’hui</h2></div><div class="list">${sessionRow(doneToday)}</div>${cheerCard(cheerFor(doneToday), true)}`;
+    html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Séance du jour</h2></div><div class="list">${sessionRow(doneToday)}</div>${cheerCard(cheerFor(doneToday), true)}`;
   }
   if (hero) {
     if (doneToday) html += `<div class="block-title" style="margin:22px 0 8px"><h2 class="h2">Ensuite</h2></div>`;
