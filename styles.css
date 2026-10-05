@@ -64,9 +64,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .small { font-size: 14px; }
 
 /* ---------- Header / compte à rebours ---------- */
-.top { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 20px; }
+.top { display: flex; align-items: flex-end; align-items: last baseline; gap: 14px; margin-bottom: 20px; }
 .top .num { font-size: clamp(130px, 42vw, 200px); line-height: .78; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: 6px; flex: none; }
-.top .lbl { font-size: 17px; font-weight: 800; line-height: 1.15; padding-bottom: 4px; min-width: 0; }
+.top .lbl { font-size: 17px; font-weight: 800; line-height: 1.15; min-width: 0; }
 .top .lbl .muted { font-weight: 700; font-size: 15px; }
 .top .wk { display: block; margin-top: 8px; font-size: 14px; font-weight: 800; color: var(--orange); }
 
