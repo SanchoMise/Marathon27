@@ -1,0 +1,1208 @@
+{
+ "meta": {
+  "race": "Marathon",
+  "race_date": "2027-04-04",
+  "start": "2026-10-05",
+  "weeks": 26,
+  "sessions_to_validate": 103,
+  "timezone": "Europe/Paris"
+ },
+ "weeks": [
+  {
+   "n": 1,
+   "start": "2026-10-05",
+   "phase": "Base",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w01-lun",
+     "day": "lun",
+     "date": "2026-10-05",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w01-mer",
+     "day": "mer",
+     "date": "2026-10-07",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile"
+    },
+    {
+     "id": "w01-ven",
+     "day": "ven",
+     "date": "2026-10-09",
+     "type": "run_easy",
+     "minutes": 20,
+     "place": "tapis",
+     "title": "20 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w01-dim",
+     "day": "dim",
+     "date": "2026-10-11",
+     "type": "run_long",
+     "minutes": 30,
+     "place": "extérieur",
+     "title": "Sortie longue 0h30"
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "start": "2026-10-12",
+   "phase": "Base",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w02-lun",
+     "day": "lun",
+     "date": "2026-10-12",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w02-mer",
+     "day": "mer",
+     "date": "2026-10-14",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile"
+    },
+    {
+     "id": "w02-ven",
+     "day": "ven",
+     "date": "2026-10-16",
+     "type": "run_easy",
+     "minutes": 20,
+     "place": "tapis",
+     "title": "20 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w02-dim",
+     "day": "dim",
+     "date": "2026-10-18",
+     "type": "run_long",
+     "minutes": 33,
+     "place": "extérieur",
+     "title": "Sortie longue 0h33"
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "start": "2026-10-19",
+   "phase": "Base",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w03-lun",
+     "day": "lun",
+     "date": "2026-10-19",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w03-mer",
+     "day": "mer",
+     "date": "2026-10-21",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile"
+    },
+    {
+     "id": "w03-ven",
+     "day": "ven",
+     "date": "2026-10-23",
+     "type": "run_easy",
+     "minutes": 20,
+     "place": "tapis",
+     "title": "20 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w03-dim",
+     "day": "dim",
+     "date": "2026-10-25",
+     "type": "run_long",
+     "minutes": 36,
+     "place": "extérieur",
+     "title": "Sortie longue 0h36"
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "start": "2026-10-26",
+   "phase": "Base",
+   "allegee": true,
+   "tag": "allégée",
+   "sessions": [
+    {
+     "id": "w04-lun",
+     "day": "lun",
+     "date": "2026-10-26",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w04-mer",
+     "day": "mer",
+     "date": "2026-10-28",
+     "type": "run_easy",
+     "minutes": 20,
+     "place": "tapis",
+     "title": "20 min facile"
+    },
+    {
+     "id": "w04-ven",
+     "day": "ven",
+     "date": "2026-10-30",
+     "type": "run_easy",
+     "minutes": 15,
+     "place": "tapis",
+     "title": "15 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w04-dim",
+     "day": "dim",
+     "date": "2026-11-01",
+     "type": "run_long",
+     "minutes": 28,
+     "place": "extérieur",
+     "title": "Sortie longue 0h28"
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "start": "2026-11-02",
+   "phase": "Base",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w05-lun",
+     "day": "lun",
+     "date": "2026-11-02",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w05-mer",
+     "day": "mer",
+     "date": "2026-11-04",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile"
+    },
+    {
+     "id": "w05-ven",
+     "day": "ven",
+     "date": "2026-11-06",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w05-dim",
+     "day": "dim",
+     "date": "2026-11-08",
+     "type": "run_long",
+     "minutes": 40,
+     "place": "extérieur",
+     "title": "Sortie longue 0h40"
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "start": "2026-11-09",
+   "phase": "Base",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w06-lun",
+     "day": "lun",
+     "date": "2026-11-09",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w06-mer",
+     "day": "mer",
+     "date": "2026-11-11",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile"
+    },
+    {
+     "id": "w06-ven",
+     "day": "ven",
+     "date": "2026-11-13",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w06-dim",
+     "day": "dim",
+     "date": "2026-11-15",
+     "type": "run_long",
+     "minutes": 44,
+     "place": "extérieur",
+     "title": "Sortie longue 0h44"
+    }
+   ]
+  },
+  {
+   "n": 7,
+   "start": "2026-11-16",
+   "phase": "Base",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w07-lun",
+     "day": "lun",
+     "date": "2026-11-16",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w07-mer",
+     "day": "mer",
+     "date": "2026-11-18",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile"
+    },
+    {
+     "id": "w07-ven",
+     "day": "ven",
+     "date": "2026-11-20",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w07-dim",
+     "day": "dim",
+     "date": "2026-11-22",
+     "type": "run_long",
+     "minutes": 49,
+     "place": "extérieur",
+     "title": "Sortie longue 0h49"
+    }
+   ]
+  },
+  {
+   "n": 8,
+   "start": "2026-11-23",
+   "phase": "Base",
+   "allegee": true,
+   "tag": "allégée",
+   "sessions": [
+    {
+     "id": "w08-lun",
+     "day": "lun",
+     "date": "2026-11-23",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w08-mer",
+     "day": "mer",
+     "date": "2026-11-25",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile"
+    },
+    {
+     "id": "w08-ven",
+     "day": "ven",
+     "date": "2026-11-27",
+     "type": "run_easy",
+     "minutes": 20,
+     "place": "tapis",
+     "title": "20 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w08-dim",
+     "day": "dim",
+     "date": "2026-11-29",
+     "type": "run_long",
+     "minutes": 35,
+     "place": "extérieur",
+     "title": "Sortie longue 0h35"
+    }
+   ]
+  },
+  {
+   "n": 9,
+   "start": "2026-11-30",
+   "phase": "Construction",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w09-lun",
+     "day": "lun",
+     "date": "2026-11-30",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w09-mer",
+     "day": "mer",
+     "date": "2026-12-02",
+     "type": "run_easy",
+     "minutes": 35,
+     "place": "tapis",
+     "title": "35 min facile"
+    },
+    {
+     "id": "w09-ven",
+     "day": "ven",
+     "date": "2026-12-04",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w09-dim",
+     "day": "dim",
+     "date": "2026-12-06",
+     "type": "run_long",
+     "minutes": 54,
+     "place": "extérieur",
+     "title": "Sortie longue 0h54"
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "start": "2026-12-07",
+   "phase": "Construction",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w10-lun",
+     "day": "lun",
+     "date": "2026-12-07",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w10-mer",
+     "day": "mer",
+     "date": "2026-12-09",
+     "type": "run_easy",
+     "minutes": 35,
+     "place": "tapis",
+     "title": "35 min facile"
+    },
+    {
+     "id": "w10-ven",
+     "day": "ven",
+     "date": "2026-12-11",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w10-dim",
+     "day": "dim",
+     "date": "2026-12-13",
+     "type": "run_long",
+     "minutes": 60,
+     "place": "extérieur",
+     "title": "Sortie longue 1h00"
+    }
+   ]
+  },
+  {
+   "n": 11,
+   "start": "2026-12-14",
+   "phase": "Construction",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w11-lun",
+     "day": "lun",
+     "date": "2026-12-14",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w11-mer",
+     "day": "mer",
+     "date": "2026-12-16",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile"
+    },
+    {
+     "id": "w11-ven",
+     "day": "ven",
+     "date": "2026-12-18",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w11-dim",
+     "day": "dim",
+     "date": "2026-12-20",
+     "type": "run_long",
+     "minutes": 66,
+     "place": "extérieur",
+     "title": "Sortie longue 1h06"
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "start": "2026-12-21",
+   "phase": "Construction",
+   "allegee": true,
+   "tag": "allégée (Noël)",
+   "sessions": [
+    {
+     "id": "w12-lun",
+     "day": "lun",
+     "date": "2026-12-21",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w12-mer",
+     "day": "mer",
+     "date": "2026-12-23",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile"
+    },
+    {
+     "id": "w12-ven",
+     "day": "ven",
+     "date": "2026-12-25",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w12-dim",
+     "day": "dim",
+     "date": "2026-12-27",
+     "type": "run_long",
+     "minutes": 50,
+     "place": "extérieur",
+     "title": "Sortie longue 0h50"
+    }
+   ]
+  },
+  {
+   "n": 13,
+   "start": "2026-12-28",
+   "phase": "Construction",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w13-lun",
+     "day": "lun",
+     "date": "2026-12-28",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w13-mer",
+     "day": "mer",
+     "date": "2026-12-30",
+     "type": "run_quality",
+     "minutes": 45,
+     "place": "tapis",
+     "title": "3 × 6 min soutenu (≈ 45 min avec échauffement)"
+    },
+    {
+     "id": "w13-ven",
+     "day": "ven",
+     "date": "2027-01-01",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w13-dim",
+     "day": "dim",
+     "date": "2027-01-03",
+     "type": "run_long",
+     "minutes": 73,
+     "place": "extérieur",
+     "title": "Sortie longue 1h13"
+    }
+   ]
+  },
+  {
+   "n": 14,
+   "start": "2027-01-04",
+   "phase": "Construction",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w14-lun",
+     "day": "lun",
+     "date": "2027-01-04",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w14-mer",
+     "day": "mer",
+     "date": "2027-01-06",
+     "type": "run_quality",
+     "minutes": 50,
+     "place": "tapis",
+     "title": "3 × 8 min soutenu (≈ 50 min avec échauffement)"
+    },
+    {
+     "id": "w14-ven",
+     "day": "ven",
+     "date": "2027-01-08",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w14-dim",
+     "day": "dim",
+     "date": "2027-01-10",
+     "type": "run_long",
+     "minutes": 81,
+     "place": "extérieur",
+     "title": "Sortie longue 1h21"
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "start": "2027-01-11",
+   "phase": "Construction",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w15-lun",
+     "day": "lun",
+     "date": "2027-01-11",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w15-mer",
+     "day": "mer",
+     "date": "2027-01-13",
+     "type": "run_quality",
+     "minutes": 55,
+     "place": "tapis",
+     "title": "4 × 8 min soutenu (≈ 55 min avec échauffement)"
+    },
+    {
+     "id": "w15-ven",
+     "day": "ven",
+     "date": "2027-01-15",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w15-dim",
+     "day": "dim",
+     "date": "2027-01-17",
+     "type": "run_long",
+     "minutes": 90,
+     "place": "extérieur",
+     "title": "Sortie longue 1h30"
+    }
+   ]
+  },
+  {
+   "n": 16,
+   "start": "2027-01-18",
+   "phase": "Construction",
+   "allegee": true,
+   "tag": "allégée",
+   "sessions": [
+    {
+     "id": "w16-lun",
+     "day": "lun",
+     "date": "2027-01-18",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w16-mer",
+     "day": "mer",
+     "date": "2027-01-20",
+     "type": "run_quality",
+     "minutes": 45,
+     "place": "tapis",
+     "title": "3 × 6 min soutenu (≈ 45 min avec échauffement)"
+    },
+    {
+     "id": "w16-ven",
+     "day": "ven",
+     "date": "2027-01-22",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w16-dim",
+     "day": "dim",
+     "date": "2027-01-24",
+     "type": "run_long",
+     "minutes": 65,
+     "place": "extérieur",
+     "title": "Sortie longue 1h05"
+    }
+   ]
+  },
+  {
+   "n": 17,
+   "start": "2027-01-25",
+   "phase": "Spécifique",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w17-lun",
+     "day": "lun",
+     "date": "2027-01-25",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w17-mer",
+     "day": "mer",
+     "date": "2027-01-27",
+     "type": "run_quality",
+     "minutes": 60,
+     "place": "tapis",
+     "title": "1h dont 15 min allure marathon"
+    },
+    {
+     "id": "w17-ven",
+     "day": "ven",
+     "date": "2027-01-29",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w17-dim",
+     "day": "dim",
+     "date": "2027-01-31",
+     "type": "run_long",
+     "minutes": 99,
+     "place": "extérieur",
+     "title": "Sortie longue 1h39"
+    }
+   ]
+  },
+  {
+   "n": 18,
+   "start": "2027-02-01",
+   "phase": "Spécifique",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w18-lun",
+     "day": "lun",
+     "date": "2027-02-01",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w18-mer",
+     "day": "mer",
+     "date": "2027-02-03",
+     "type": "run_quality",
+     "minutes": 60,
+     "place": "tapis",
+     "title": "1h dont 20 min allure marathon"
+    },
+    {
+     "id": "w18-ven",
+     "day": "ven",
+     "date": "2027-02-05",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w18-dim",
+     "day": "dim",
+     "date": "2027-02-07",
+     "type": "run_long",
+     "minutes": 110,
+     "place": "extérieur",
+     "title": "Sortie longue 1h50"
+    }
+   ]
+  },
+  {
+   "n": 19,
+   "start": "2027-02-08",
+   "phase": "Spécifique",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w19-lun",
+     "day": "lun",
+     "date": "2027-02-08",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w19-mer",
+     "day": "mer",
+     "date": "2027-02-10",
+     "type": "run_quality",
+     "minutes": 60,
+     "place": "tapis",
+     "title": "1h dont 25 min allure marathon"
+    },
+    {
+     "id": "w19-ven",
+     "day": "ven",
+     "date": "2027-02-12",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w19-dim",
+     "day": "dim",
+     "date": "2027-02-14",
+     "type": "run_long",
+     "minutes": 122,
+     "place": "extérieur",
+     "title": "Sortie longue 2h02"
+    }
+   ]
+  },
+  {
+   "n": 20,
+   "start": "2027-02-15",
+   "phase": "Spécifique",
+   "allegee": true,
+   "tag": "allégée",
+   "sessions": [
+    {
+     "id": "w20-lun",
+     "day": "lun",
+     "date": "2027-02-15",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w20-mer",
+     "day": "mer",
+     "date": "2027-02-17",
+     "type": "run_quality",
+     "minutes": 60,
+     "place": "tapis",
+     "title": "1h dont 15 min allure marathon"
+    },
+    {
+     "id": "w20-ven",
+     "day": "ven",
+     "date": "2027-02-19",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w20-dim",
+     "day": "dim",
+     "date": "2027-02-21",
+     "type": "run_long",
+     "minutes": 90,
+     "place": "extérieur",
+     "title": "Sortie longue 1h30"
+    }
+   ]
+  },
+  {
+   "n": 21,
+   "start": "2027-02-22",
+   "phase": "Spécifique",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w21-lun",
+     "day": "lun",
+     "date": "2027-02-22",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w21-mer",
+     "day": "mer",
+     "date": "2027-02-24",
+     "type": "run_quality",
+     "minutes": 60,
+     "place": "tapis",
+     "title": "1h dont 30 min allure marathon"
+    },
+    {
+     "id": "w21-ven",
+     "day": "ven",
+     "date": "2027-02-26",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w21-dim",
+     "day": "dim",
+     "date": "2027-02-28",
+     "type": "run_long",
+     "minutes": 135,
+     "place": "extérieur",
+     "title": "Sortie longue 2h15"
+    }
+   ]
+  },
+  {
+   "n": 22,
+   "start": "2027-03-01",
+   "phase": "Spécifique",
+   "allegee": false,
+   "tag": "point de décision pour le pic",
+   "sessions": [
+    {
+     "id": "w22-lun",
+     "day": "lun",
+     "date": "2027-03-01",
+     "type": "renfo",
+     "minutes": 30,
+     "place": "salle",
+     "title": "Renfo A · 3 séries"
+    },
+    {
+     "id": "w22-mer",
+     "day": "mer",
+     "date": "2027-03-03",
+     "type": "run_quality",
+     "minutes": 60,
+     "place": "tapis",
+     "title": "1h dont 30 min allure marathon"
+    },
+    {
+     "id": "w22-ven",
+     "day": "ven",
+     "date": "2027-03-05",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w22-dim",
+     "day": "dim",
+     "date": "2027-03-07",
+     "type": "run_long",
+     "minutes": 150,
+     "place": "extérieur",
+     "title": "Sortie longue 2h30"
+    }
+   ]
+  },
+  {
+   "n": 23,
+   "start": "2027-03-08",
+   "phase": "Spécifique",
+   "allegee": false,
+   "tag": "pic",
+   "sessions": [
+    {
+     "id": "w23-lun",
+     "day": "lun",
+     "date": "2027-03-08",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w23-mer",
+     "day": "mer",
+     "date": "2027-03-10",
+     "type": "run_quality",
+     "minutes": 60,
+     "place": "tapis",
+     "title": "1h dont 20 min allure marathon"
+    },
+    {
+     "id": "w23-ven",
+     "day": "ven",
+     "date": "2027-03-12",
+     "type": "run_easy",
+     "minutes": 35,
+     "place": "tapis",
+     "title": "35 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w23-dim",
+     "day": "dim",
+     "date": "2027-03-14",
+     "type": "run_long",
+     "minutes": 166,
+     "place": "extérieur",
+     "title": "Sortie longue 2h46"
+    }
+   ]
+  },
+  {
+   "n": 24,
+   "start": "2027-03-15",
+   "phase": "Affûtage",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w24-lun",
+     "day": "lun",
+     "date": "2027-03-15",
+     "type": "renfo",
+     "minutes": 20,
+     "place": "salle",
+     "title": "Renfo A · 2 séries"
+    },
+    {
+     "id": "w24-mer",
+     "day": "mer",
+     "date": "2027-03-17",
+     "type": "run_easy",
+     "minutes": 40,
+     "place": "tapis",
+     "title": "40 min facile"
+    },
+    {
+     "id": "w24-ven",
+     "day": "ven",
+     "date": "2027-03-19",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w24-dim",
+     "day": "dim",
+     "date": "2027-03-21",
+     "type": "run_long",
+     "minutes": 110,
+     "place": "extérieur",
+     "title": "Sortie longue 1h50"
+    }
+   ]
+  },
+  {
+   "n": 25,
+   "start": "2027-03-22",
+   "phase": "Affûtage",
+   "allegee": false,
+   "tag": null,
+   "sessions": [
+    {
+     "id": "w25-lun",
+     "day": "lun",
+     "date": "2027-03-22",
+     "type": "renfo",
+     "minutes": 15,
+     "place": "salle",
+     "title": "Renfo A léger · 15 min"
+    },
+    {
+     "id": "w25-mer",
+     "day": "mer",
+     "date": "2027-03-24",
+     "type": "run_easy",
+     "minutes": 30,
+     "place": "tapis",
+     "title": "30 min facile"
+    },
+    {
+     "id": "w25-ven",
+     "day": "ven",
+     "date": "2027-03-26",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile",
+     "extra": "+ 10 min de renfo B après la course"
+    },
+    {
+     "id": "w25-dim",
+     "day": "dim",
+     "date": "2027-03-28",
+     "type": "run_long",
+     "minutes": 80,
+     "place": "extérieur",
+     "title": "Sortie longue 1h20"
+    }
+   ]
+  },
+  {
+   "n": 26,
+   "start": "2027-03-29",
+   "phase": "Affûtage",
+   "allegee": false,
+   "tag": "semaine du marathon",
+   "sessions": [
+    {
+     "id": "w26-lun",
+     "day": "lun",
+     "date": "2027-03-29",
+     "type": "rest",
+     "minutes": 0,
+     "place": "salle",
+     "title": "Repos"
+    },
+    {
+     "id": "w26-mer",
+     "day": "mer",
+     "date": "2027-03-31",
+     "type": "run_easy",
+     "minutes": 25,
+     "place": "tapis",
+     "title": "25 min facile"
+    },
+    {
+     "id": "w26-ven",
+     "day": "ven",
+     "date": "2027-04-02",
+     "type": "run_easy",
+     "minutes": 20,
+     "place": "tapis",
+     "title": "20 min très facile",
+     "extra": null
+    },
+    {
+     "id": "w26-dim",
+     "day": "dim",
+     "date": "2027-04-04",
+     "type": "race",
+     "minutes": null,
+     "place": "extérieur",
+     "title": "Marathon"
+    }
+   ]
+  }
+ ]
+}
