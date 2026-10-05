@@ -233,9 +233,8 @@ function viewToday() {
   const skippedThisWeek = cw.sessions.filter(s => state.skipped[s.id]).length;
 
   let html = `<header class="top">
-    <div class="count"><span class="num display" aria-hidden="true">${days}</span>
-      <span class="lbl"><span class="sr">${days} </span>${days > 1 ? 'jours' : 'jour'} avant le marathon<br><span class="muted">dim. 4 avril 2027</span></span></div>
-    <div class="logo">M27<span>Sem. ${cw.n} / 26</span></div>
+    <span class="num display" aria-hidden="true">${days}</span>
+    <p class="lbl"><span class="sr">${days} </span>${days > 1 ? 'jours' : 'jour'} avant le marathon,<br><span class="muted">dim. 4 avril 2027</span><span class="wk">Sem. ${cw.n} / 26</span></p>
   </header>`;
 
   if (alertK) html += alertBox(alertK);
