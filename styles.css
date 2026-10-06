@@ -36,17 +36,22 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; height: 100%; }
+html, body { overflow: hidden; overscroll-behavior: none; }
 body {
+  height: 100%;
   margin: 0;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font);
   font-size: 17px;
   line-height: 1.4;
-  padding: env(safe-area-inset-top) 0 0;
 }
-#app { max-width: 520px; margin: 0 auto; padding: 20px 16px 140px; outline: none; }
+/* Le contenu défile dans #app : la barre de navigation reste donc toujours au même endroit, quelle que soit la longueur de la page. */
+#app {
+  position: fixed; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; outline: none;
+  padding: calc(20px + env(safe-area-inset-top)) max(16px, calc((100% - 520px) / 2)) 140px;
+}
 h1, h2, h3, p { margin: 0; }
 button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 8px; }
@@ -242,7 +247,7 @@ nav a:focus-visible { outline-color: #fff; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
-@media (min-width: 700px) { #app { padding-top: 40px; } }
+@media (min-width: 700px) { #app { padding-top: calc(40px + env(safe-area-inset-top)); } }
 
 .code-in { width: 100%; min-height: 52px; border-radius: 16px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); font: 700 18px ui-monospace, Menlo, monospace; padding: 0 14px; letter-spacing: .04em; }
 .code-show { font: 800 20px ui-monospace, Menlo, monospace; letter-spacing: .06em; padding: 14px; border-radius: 16px; background: var(--bg); word-break: break-all; user-select: all; }

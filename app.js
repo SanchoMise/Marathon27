@@ -192,7 +192,7 @@ function tipOf(s) {
       ? 'Allure facile. Marche 1 min toutes les 10 à 15 min : c’est prévu, ça fait partie du plan. Chemin ou terre si possible.'
       : 'Allure facile, sur chemin ou terre si possible. Tu t’arrêtes là où le plan s’arrête.';
     case 'renfo': return s.day === 'lun'
-      ? 'À la salle. Toutes les séries d’un exercice, puis tu passes au suivant, avec 60 à 90 s de repos entre séries. Garde 2 répétitions en réserve. Un genou à plus de 3/10 ou un ménisque qui bloque : tu arrêtes l’exercice.'
+      ? 'À la salle. Toutes les séries d’un exercice, puis tu passes au suivant, avec 60 à 90 s de repos entre séries. Arrête chaque série quand tu sentirais pouvoir en faire encore 2 : pas besoin d’aller jusqu’au bout. Un genou à plus de 3/10 ou un ménisque qui bloque : tu arrêtes l’exercice.'
       : '';
     case 'race': return 'Pars plus lent que ton allure marathon. Marche 1 min toutes les 10 à 15 min si besoin. Rien de nouveau le jour J.';
     default: return '';
@@ -402,7 +402,7 @@ function viewMore() {
     <h3>Séance A · lundi midi, salle (20 à 30 min)</h3>
     <p>Échauffement 5 min : marche rapide ou vélo. Tu fais <b>toutes les séries d’un exercice</b>, puis tu passes au suivant, avec 60 à 90 s de repos entre séries. 2 ou 3 séries selon la séance du jour, 1 seule en version légère.</p>
     ${exoList({ title: '3 séries' }).replace('3 × ', '2 à 3 × ')}
-    <p>Il te reste 2 répétitions en réserve. Si le genou fait mal (plus de 3 sur 10) ou si le ménisque se bloque, tu arrêtes l’exercice.</p>
+    <p><b>Pas jusqu’à l’épuisement :</b> arrête chaque série quand tu sentirais que tu pourrais encore faire 2 répétitions propres. Si le genou fait mal (plus de 3 sur 10) ou si le ménisque se bloque, tu arrêtes l’exercice.</p>
     <h3>Séance B · vendredi soir, 10 min après la course</h3>
     <p>Pont fessier 2 × 12, marche latérale avec élastique 2 × 12 pas de chaque côté, mollets 2 × 15, planche 2 × 30 s.</p>
     <h3>À éviter, ou à valider avec le kiné</h3>
@@ -603,15 +603,17 @@ function route() { const r = location.hash.slice(1); return VIEWS[r] ? r : 'toda
 function render() {
   const r = route();
   const app = $('#app');
+  const top = app.scrollTop;
   const open = [...document.querySelectorAll('details[open]')].map(d => d.id).filter(Boolean);
   const io = $('#io') ? $('#io').value : '';
   app.innerHTML = VIEWS[r]();
   open.forEach(id => { const d = document.getElementById(id); if (d && r !== 'plan') d.open = true; });
   if (r === 'plan') open.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
   if (io && $('#io')) $('#io').value = io;
+  app.scrollTop = top;
   $('#nav').innerHTML = NAV.map(([k, label, icon]) => `<a href="#${k}" ${k === r ? 'aria-current="page"' : ''} aria-label="${label}">${icon}<span class="t">${label}</span></a>`).join('');
 }
-window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+window.addEventListener('hashchange', () => { render(); $('#app').scrollTop = 0; });
 
 /* ---------- Démarrage ---------- */
 (async function init() {
