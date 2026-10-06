@@ -63,7 +63,7 @@ function normalize(o) {
   const ids = new Set(SESSIONS ? SESSIONS.map(s => s.id) : []);
   const r = { done: {}, skipped: {}, u: {} };
   for (const [id, v] of Object.entries((o && o.done) || {})) {
-    if (!ids.size || ids.has(id)) r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null };
+    if (!ids.size || ids.has(id)) { r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null }; const st = cleanStats(v.stats); if (st) r.done[id].stats = st; }
   }
   for (const id of Object.keys((o && o.skipped) || {})) if (!ids.size || ids.has(id)) r.skipped[id] = true;
   const u = (o && o.u) || {};
@@ -74,6 +74,28 @@ function normalize(o) {
   }
   return r;
 }
+// Stats saisies à la main (distance, durée, allure, fréquence cardiaque, note)
+function cleanStats(o) {
+  if (!o || typeof o !== 'object') return null;
+  const r = {};
+  for (const k of ['km', 'min', 'hr']) { const n = Number(o[k]); if (Number.isFinite(n) && n > 0 && n < 1000) r[k] = n; }
+  if (typeof o.pace === 'string' && /^\d{1,2}:\d{2}$/.test(o.pace.trim())) r.pace = o.pace.trim();
+  if (typeof o.note === 'string' && o.note.trim()) r.note = o.note.trim().slice(0, 500);
+  return Object.keys(r).length ? r : null;
+}
+const num = v => Number(String(v || '').trim().replace(',', '.'));
+const fmtPace = sec => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+const paceOf = st => st && (st.pace || (st.km && st.min ? fmtPace((st.min * 60) / st.km) : null));
+const fmtKm = km => String(Math.round(km * 100) / 100).replace('.', ',');
+function statsLine(id) {
+  const st = state.done[id] && state.done[id].stats; if (!st) return '';
+  const p = paceOf(st);
+  return [st.km && `${fmtKm(st.km)} km`, st.min && `${fmtMin(st.min)}`, p && `${p}/km`, st.hr && `${st.hr} bpm`].filter(Boolean).join(' · ');
+}
+const fmtMin = m => (m >= 60 ? `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, '0')}` : `${Math.round(m * 10) / 10} min`.replace('.', ','));
+const totalKm = () => Object.values(state.done).reduce((a, d) => a + ((d.stats && d.stats.km) || 0), 0);
+const isRun = s => ['run_easy', 'run_quality', 'run_long', 'race'].includes(s.type);
+
 // Fusion : pour chaque séance, la modification la plus récente gagne (une annulation compte comme une modification).
 function mergeStates(a, b) {
   const r = { done: {}, skipped: {}, u: {} };
@@ -203,7 +225,7 @@ function tipOf(s) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const kneeTag = id => {
   const k = state.done[id] && state.done[id].knee;
-  return `<button class="knee-tag ${k || ''}" data-a="knee" data-id="${id}" aria-label="Ressenti des genoux : ${k ? KNEE[k] : 'non renseigné'}. Modifier">${k ? KNEE[k] : 'Genoux ?'}</button>`;
+  return `<button class="knee-tag ${k || ''}" data-a="knee" data-id="${id}" aria-label="Détails de la séance (genoux${k ? ' : ' + KNEE[k] : ''}, stats). Modifier">${k ? KNEE[k] : 'Détails'}</button>`;
 };
 function sessionRow(s, opts = {}) {
   const t = TYPES[s.type];
@@ -216,7 +238,7 @@ function sessionRow(s, opts = {}) {
   return `<div class="row ${done ? 'is-done' : ''}">
     <span class="stripe ${t.cls}"></span>
     <div><div class="when">${fmtDate(s.date)} · ${s.place}${skipped ? ' · passée' : ''}</div>
-      <div class="what">${esc(titleOf(s))}</div></div>
+      <div class="what">${esc(titleOf(s))}</div>${done && statsLine(s.id) ? `<div class="stats-line">${esc(statsLine(s.id))}</div>` : ''}</div>
     <div class="acts">${done ? kneeTag(s.id) : ''}${opts.late && !done ? `<button class="mini" data-a="skip" data-id="${s.id}">Passer</button>` : ''}
       <button class="check" data-a="toggle" data-id="${s.id}" aria-pressed="${done}" aria-label="${done ? 'Annuler la validation' : 'Valider'} : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${I.check}</button></div>
   </div>`;
@@ -274,7 +296,7 @@ function viewToday() {
   html += `<section class="block"><div class="block-title"><h2 class="h2">Cette semaine</h2><span class="stat">${ws.done}<small>/ ${ws.total}</small></span></div>${segs(ws.done, ws.total)}</section>
   <section class="block"><div class="block-title"><h2 class="h2">Ma prépa</h2><span class="stat">${pct}<small>%</small></span></div>
     <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${tot.total}" aria-valuenow="${tot.done}" aria-label="Séances validées"><i style="width:${pct}%"></i></div>
-    <p class="small muted" style="margin-top:8px">${tot.done} séances validées sur ${tot.total}</p></section>`;
+    <p class="small muted" style="margin-top:8px">${tot.done} séances validées sur ${tot.total}${totalKm() ? ` · ${fmtKm(totalKm())} km saisis` : ''}</p></section>`;
 
   if (nextUp.length) {
     html += `<section class="block"><div class="block-title"><h2 class="h2">Puis</h2></div><div class="list">${nextUp.map(s => sessionRow(s)).join('')}</div></section>`;
@@ -503,17 +525,29 @@ function schedulePush() { if (!getCode()) return; clearTimeout(pushTimer); pushT
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(true); });
 
 /* ---------- Bottom sheet : ressenti des genoux ---------- */
+let sheetKnee = null;
 function openKnee(id, fresh) {
   const s = SESSIONS.find(x => x.id === id);
-  const cur = state.done[id] && state.done[id].knee;
-  $('#sheet-root').innerHTML = `<div class="scrim" data-a="close-sheet"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
-    <h2 id="sh-t">Et tes genoux ?</h2><p>${esc(titleOf(s))} · optionnel.</p>
-    <div class="knee-opts">
-      <button class="opt ras" data-a="set-knee" data-k="ras" data-id="${id}">RAS<small>${cur === 'ras' ? '✓' : ''}</small></button>
-      <button class="opt gene" data-a="set-knee" data-k="gene" data-id="${id}">Gêne<small>${cur === 'gene' ? '✓' : ''}</small></button>
-      <button class="opt douleur" data-a="set-knee" data-k="douleur" data-id="${id}">Douleur<small>${cur === 'douleur' ? '✓' : ''}</small></button></div>
-    <button class="btn line block" data-a="close-sheet">${fresh ? 'Passer' : 'Fermer'}</button></div></div>`;
-  const b = $('.opt'); if (b) b.focus();
+  const d = state.done[id] || {};
+  const st = d.stats || {};
+  sheetKnee = d.knee || null;
+  const kb = (k, label) => `<button type="button" class="opt ${k}" data-a="pick-knee" data-k="${k}" aria-pressed="${sheetKnee === k}">${label}</button>`;
+  const field = (name, label, val, mode, ph) => `<label class="fld"><span>${label}</span><input name="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${val == null ? '' : esc(String(val).replace('.', name === 'pace' ? '.' : ','))}"></label>`;
+  $('#sheet-root').innerHTML = `<div class="scrim" data-a="close-sheet"><form class="sheet" id="sheet-form" data-id="${id}" role="dialog" aria-modal="true" aria-labelledby="sh-t">
+    <h2 id="sh-t">Comment c’était ?</h2><p>${esc(titleOf(s))} · tout est optionnel.</p>
+    <h3 class="sh-h">Tes genoux</h3>
+    <div class="knee-opts">${kb('ras', 'RAS')}${kb('gene', 'Gêne')}${kb('douleur', 'Douleur')}</div>
+    ${isRun(s) ? `<h3 class="sh-h">Tes stats</h3><p class="small muted" style="margin:0 0 8px">Recopie ce qui est sur la montre ou le tapis.</p>
+    <div class="flds">
+      ${field('km', 'Distance (km)', st.km, 'decimal', '5,2')}
+      ${field('min', 'Durée (min)', st.min, 'decimal', '32')}
+      ${field('pace', 'Allure (min/km)', st.pace, 'text', 'auto')}
+      ${field('hr', 'FC moyenne', st.hr, 'numeric', '142')}
+    </div>
+    <label class="fld wide"><span>Note</span><input name="note" autocomplete="off" placeholder="Sensations, météo, tapis…" value="${esc(st.note || '')}"></label>` : ''}
+    <div class="sh-actions"><button type="submit" class="btn block">Enregistrer</button>
+    <button type="button" class="btn line block" data-a="close-sheet">${fresh ? 'Passer' : 'Fermer'}</button></div></form></div>`;
+  const b = $('#sheet-form .opt'); if (b) b.focus();
 }
 const closeSheet = () => { $('#sheet-root').innerHTML = ''; };
 
@@ -561,9 +595,9 @@ const actions = {
   skip: e => { state.skipped[e.dataset.id] = true; touch(e.dataset.id); save(); render(); },
   knee: e => openKnee(e.dataset.id, false),
   'close-sheet': (e, ev) => { if (ev.target === e) closeSheet(); },
-  'set-knee': e => {
-    const id = e.dataset.id; if (state.done[id]) { state.done[id].knee = e.dataset.k; touch(id); }
-    save(); closeSheet(); render();
+  'pick-knee': e => {
+    sheetKnee = sheetKnee === e.dataset.k ? null : e.dataset.k;
+    document.querySelectorAll('#sheet-form .opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === sheetKnee)));
   },
   pick: e => { selectedWeek = +e.dataset.n; render(); const g = document.querySelector(`[data-a="pick"][data-n="${selectedWeek}"]`); if (g) g.focus(); },
   goto: e => { location.hash = '#more'; setTimeout(() => { const d = document.getElementById(e.dataset.t); if (d) { d.open = true; d.scrollIntoView(); } }, 0); },
@@ -591,6 +625,16 @@ const msg = t => { const m = $('#io-msg'); if (m) m.textContent = t; };
 document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-a]');
   if (el && actions[el.dataset.a]) actions[el.dataset.a](el, ev);
+});
+document.addEventListener('submit', ev => {
+  const f = ev.target.closest('#sheet-form'); if (!f) return;
+  ev.preventDefault();
+  const id = f.dataset.id, d = state.done[id]; if (!d) return closeSheet();
+  const v = n => (f.elements[n] ? f.elements[n].value : '');
+  const pace = String(v('pace')).trim().replace(',', ':').replace('.', ':');
+  const stats = cleanStats({ km: num(v('km')), min: num(v('min')), hr: num(v('hr')), pace, note: v('note') });
+  d.knee = sheetKnee; if (stats) d.stats = stats; else delete d.stats;
+  touch(id); save(); closeSheet(); render();
 });
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') closeSheet();
