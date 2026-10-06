@@ -225,8 +225,9 @@ function tipOf(s) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const kneeTag = id => {
   const k = state.done[id] && state.done[id].knee;
-  return `<button class="knee-tag ${k || ''}" data-a="knee" data-id="${id}" aria-label="Détails de la séance (genoux${k ? ' : ' + KNEE[k] : ''}, stats). Modifier">${k ? KNEE[k] : 'Détails'}</button>`;
+  return k ? `<span class="knee-tag ${k}" role="img" aria-label="Genoux : ${KNEE[k]}">${KNEE[k]}</span>` : '';
 };
+const rowText = (s, skipped) => `<span class="when">${fmtDate(s.date)} · ${s.place}${skipped ? ' · passée' : ''}</span><span class="what">${esc(titleOf(s))}</span>`;
 function sessionRow(s, opts = {}) {
   const t = TYPES[s.type];
   const done = isDone(s.id);
@@ -237,8 +238,7 @@ function sessionRow(s, opts = {}) {
   const skipped = state.skipped[s.id];
   return `<div class="row ${done ? 'is-done' : ''}">
     <span class="stripe ${t.cls}"></span>
-    <div><div class="when">${fmtDate(s.date)} · ${s.place}${skipped ? ' · passée' : ''}</div>
-      <div class="what">${esc(titleOf(s))}</div>${done && statsLine(s.id) ? `<div class="stats-line">${esc(statsLine(s.id))}</div>` : ''}</div>
+    ${done ? `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span></button>` : `<div>${rowText(s, skipped)}</div>`}
     <div class="acts">${done ? kneeTag(s.id) : ''}${opts.late && !done ? `<button class="mini" data-a="skip" data-id="${s.id}">Passer</button>` : ''}
       <button class="check" data-a="toggle" data-id="${s.id}" aria-pressed="${done}" aria-label="${done ? 'Annuler la validation' : 'Valider'} : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${I.check}</button></div>
   </div>`;

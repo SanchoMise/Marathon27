@@ -283,3 +283,11 @@ nav a:focus-visible { outline-color: #fff; }
 .sheet .x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--surface); color: var(--ink); font-size: 20px; font-weight: 800; display: none; }
 .sheet.full .x { display: block; }
 .sheet.full h2 { padding-right: 56px; }
+
+.row-main { display: grid; gap: 0; text-align: left; background: none; border: 0; padding: 4px 0; margin: 0; color: inherit; font: inherit; min-height: 44px; align-content: center; width: 100%; }
+.row-main .when, .row-main .what, .row-main .stats-line { display: block; }
+.row-main .when { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.row-main .what { font-size: 17px; font-weight: 700; line-height: 1.2; }
+.stats-line.hint { color: var(--ink-soft); font-weight: 600; }
+span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
+.row .when, .row .what { display: block; }
