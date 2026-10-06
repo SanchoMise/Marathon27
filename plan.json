@@ -6,8 +6,8 @@
   "weeks": 26,
   "sessions_to_validate": 103,
   "timezone": "Europe/Paris",
-  "version": 2,
-  "note": "Sorties longues : 35 min -> 3h00, +10 % max entre deux vraies sorties"
+  "version": 3,
+  "note": "Sorties longues : 35 min -> 3h00 (+10 % max entre deux vraies sorties). Séances de semaine : plancher 30 min le mercredi, 25 min le vendredi"
  },
  "weeks": [
   {
@@ -31,18 +31,18 @@
      "day": "mer",
      "date": "2026-10-07",
      "type": "run_easy",
-     "minutes": 25,
+     "minutes": 30,
      "place": "tapis",
-     "title": "25 min facile"
+     "title": "30 min facile"
     },
     {
      "id": "w01-ven",
      "day": "ven",
      "date": "2026-10-09",
      "type": "run_easy",
-     "minutes": 20,
+     "minutes": 25,
      "place": "tapis",
-     "title": "20 min facile",
+     "title": "25 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -77,18 +77,18 @@
      "day": "mer",
      "date": "2026-10-14",
      "type": "run_easy",
-     "minutes": 25,
+     "minutes": 30,
      "place": "tapis",
-     "title": "25 min facile"
+     "title": "30 min facile"
     },
     {
      "id": "w02-ven",
      "day": "ven",
      "date": "2026-10-16",
      "type": "run_easy",
-     "minutes": 20,
+     "minutes": 25,
      "place": "tapis",
-     "title": "20 min facile",
+     "title": "25 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -123,18 +123,18 @@
      "day": "mer",
      "date": "2026-10-21",
      "type": "run_easy",
-     "minutes": 25,
+     "minutes": 30,
      "place": "tapis",
-     "title": "25 min facile"
+     "title": "30 min facile"
     },
     {
      "id": "w03-ven",
      "day": "ven",
      "date": "2026-10-23",
      "type": "run_easy",
-     "minutes": 20,
+     "minutes": 25,
      "place": "tapis",
-     "title": "20 min facile",
+     "title": "25 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -169,18 +169,18 @@
      "day": "mer",
      "date": "2026-10-28",
      "type": "run_easy",
-     "minutes": 20,
+     "minutes": 25,
      "place": "tapis",
-     "title": "20 min facile"
+     "title": "25 min facile"
     },
     {
      "id": "w04-ven",
      "day": "ven",
      "date": "2026-10-30",
      "type": "run_easy",
-     "minutes": 15,
+     "minutes": 20,
      "place": "tapis",
-     "title": "15 min facile",
+     "title": "20 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -215,9 +215,9 @@
      "day": "mer",
      "date": "2026-11-04",
      "type": "run_easy",
-     "minutes": 30,
+     "minutes": 35,
      "place": "tapis",
-     "title": "30 min facile"
+     "title": "35 min facile"
     },
     {
      "id": "w05-ven",
@@ -261,18 +261,18 @@
      "day": "mer",
      "date": "2026-11-11",
      "type": "run_easy",
-     "minutes": 30,
+     "minutes": 35,
      "place": "tapis",
-     "title": "30 min facile"
+     "title": "35 min facile"
     },
     {
      "id": "w06-ven",
      "day": "ven",
      "date": "2026-11-13",
      "type": "run_easy",
-     "minutes": 25,
+     "minutes": 30,
      "place": "tapis",
-     "title": "25 min facile",
+     "title": "30 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -307,18 +307,18 @@
      "day": "mer",
      "date": "2026-11-18",
      "type": "run_easy",
-     "minutes": 30,
+     "minutes": 35,
      "place": "tapis",
-     "title": "30 min facile"
+     "title": "35 min facile"
     },
     {
      "id": "w07-ven",
      "day": "ven",
      "date": "2026-11-20",
      "type": "run_easy",
-     "minutes": 25,
+     "minutes": 30,
      "place": "tapis",
-     "title": "25 min facile",
+     "title": "30 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -353,18 +353,18 @@
      "day": "mer",
      "date": "2026-11-25",
      "type": "run_easy",
-     "minutes": 25,
+     "minutes": 30,
      "place": "tapis",
-     "title": "25 min facile"
+     "title": "30 min facile"
     },
     {
      "id": "w08-ven",
      "day": "ven",
      "date": "2026-11-27",
      "type": "run_easy",
-     "minutes": 20,
+     "minutes": 25,
      "place": "tapis",
-     "title": "20 min facile",
+     "title": "25 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -399,18 +399,18 @@
      "day": "mer",
      "date": "2026-12-02",
      "type": "run_easy",
-     "minutes": 35,
+     "minutes": 40,
      "place": "tapis",
-     "title": "35 min facile"
+     "title": "40 min facile"
     },
     {
      "id": "w09-ven",
      "day": "ven",
      "date": "2026-12-04",
      "type": "run_easy",
-     "minutes": 30,
+     "minutes": 35,
      "place": "tapis",
-     "title": "30 min facile",
+     "title": "35 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -445,18 +445,18 @@
      "day": "mer",
      "date": "2026-12-09",
      "type": "run_easy",
-     "minutes": 35,
+     "minutes": 40,
      "place": "tapis",
-     "title": "35 min facile"
+     "title": "40 min facile"
     },
     {
      "id": "w10-ven",
      "day": "ven",
      "date": "2026-12-11",
      "type": "run_easy",
-     "minutes": 30,
+     "minutes": 35,
      "place": "tapis",
-     "title": "30 min facile",
+     "title": "35 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -500,9 +500,9 @@
      "day": "ven",
      "date": "2026-12-18",
      "type": "run_easy",
-     "minutes": 30,
+     "minutes": 35,
      "place": "tapis",
-     "title": "30 min facile",
+     "title": "35 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
@@ -546,9 +546,9 @@
      "day": "ven",
      "date": "2026-12-25",
      "type": "run_easy",
-     "minutes": 25,
+     "minutes": 30,
      "place": "tapis",
-     "title": "25 min facile",
+     "title": "30 min facile",
      "extra": "+ 10 min de renfo B après la course"
     },
     {
