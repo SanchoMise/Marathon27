@@ -533,7 +533,9 @@ function openKnee(id, fresh) {
   sheetKnee = d.knee || null;
   const kb = (k, label) => `<button type="button" class="opt ${k}" data-a="pick-knee" data-k="${k}" aria-pressed="${sheetKnee === k}">${label}</button>`;
   const field = (name, label, val, mode, ph) => `<label class="fld"><span>${label}</span><input name="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${val == null ? '' : esc(String(val).replace('.', name === 'pace' ? '.' : ','))}"></label>`;
-  $('#sheet-root').innerHTML = `<div class="scrim" data-a="close-sheet"><form class="sheet" id="sheet-form" data-id="${id}" role="dialog" aria-modal="true" aria-labelledby="sh-t">
+  const full = isRun(s);
+  $('#sheet-root').innerHTML = `<div class="scrim ${full ? 'full' : ''}" data-a="close-sheet"><form class="sheet ${full ? 'full' : ''}" id="sheet-form" data-id="${id}" role="dialog" aria-modal="true" aria-labelledby="sh-t">
+    <button type="button" class="x" data-a="close-sheet" aria-label="Fermer">✕</button>
     <h2 id="sh-t">Comment c’était ?</h2><p>${esc(titleOf(s))} · tout est optionnel.</p>
     <h3 class="sh-h">Tes genoux</h3>
     <div class="knee-opts">${kb('ras', 'RAS')}${kb('gene', 'Gêne')}${kb('douleur', 'Douleur')}</div>
@@ -635,6 +637,10 @@ document.addEventListener('submit', ev => {
   const stats = cleanStats({ km: num(v('km')), min: num(v('min')), hr: num(v('hr')), pace, note: v('note') });
   d.knee = sheetKnee; if (stats) d.stats = stats; else delete d.stats;
   touch(id); save(); closeSheet(); render();
+});
+// Clavier ouvert : on amène le champ au centre de l'écran.
+document.addEventListener('focusin', ev => {
+  if (ev.target.matches && ev.target.matches('#sheet-form.full input')) setTimeout(() => ev.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250);
 });
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') closeSheet();

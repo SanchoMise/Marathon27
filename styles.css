@@ -275,3 +275,11 @@ nav a:focus-visible { outline-color: #fff; }
 .fld input { width: 100%; min-height: 50px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); color: var(--ink); font: 600 17px var(--font); padding: 0 12px; }
 .sh-actions { display: grid; gap: 10px; margin-top: 18px; }
 .stats-line { font-size: 14px; font-weight: 700; margin-top: 3px; color: var(--ink); text-decoration: none; }
+
+/* Saisie des stats : écran plein et opaque (pas de page visible dessous, clavier géré) */
+.scrim.full { background: var(--bg); align-items: stretch; justify-content: center; overscroll-behavior: contain; }
+.sheet.full { border-radius: 0; max-height: none; height: 100%; animation: none; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  padding: calc(22px + env(safe-area-inset-top)) 18px 55vh; position: relative; } /* marge basse : on peut faire défiler jusqu'aux boutons clavier ouvert */
+.sheet .x { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 14px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--surface); color: var(--ink); font-size: 20px; font-weight: 800; display: none; }
+.sheet.full .x { display: block; }
+.sheet.full h2 { padding-right: 56px; }
