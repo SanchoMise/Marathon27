@@ -450,6 +450,7 @@ function viewMore() {
     <p class="small muted" id="io-msg" role="status"></p>
     <div class="btns"><button class="btn small line" data-a="reset">Tout effacer</button></div>
   </div></details>
+  <details class="acc" id="tech"><summary>Infos techniques</summary><div class="acc-body"><pre class="tech" id="tech-out">…</pre></div></details>
   <p class="small muted" style="margin-top:20px">Ce plan est général. Il ne remplace pas l’avis de ton kiné.</p>`;
 }
 
@@ -611,7 +612,24 @@ function render() {
   if (r === 'plan') open.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
   if (io && $('#io')) $('#io').value = io;
   app.scrollTop = top;
+  techInfo();
   $('#nav').innerHTML = NAV.map(([k, label, icon]) => `<a href="#${k}" ${k === r ? 'aria-current="page"' : ''} aria-label="${label}">${icon}<span class="t">${label}</span></a>`).join('');
+}
+function techInfo() {
+  const out = $('#tech-out'); if (!out) return;
+  const p = document.createElement('div');
+  p.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
+  document.body.appendChild(p);
+  const cs = getComputedStyle(p), vv = window.visualViewport, app = $('#app').getBoundingClientRect(), nav = $('#nav').getBoundingClientRect();
+  out.textContent = [
+    `mode standalone : ${navigator.standalone === true || matchMedia('(display-mode: standalone)').matches}`,
+    `screen : ${screen.width} x ${screen.height}`,
+    `innerHeight : ${innerHeight}`, `visualViewport : ${vv ? Math.round(vv.height) : '?'}`,
+    `safe haut / bas : ${cs.paddingTop} / ${cs.paddingBottom}`,
+    `bas de #app : ${Math.round(app.bottom)}`, `bas de la barre : ${Math.round(nav.bottom)}`,
+    `iOS : ${(navigator.userAgent.match(/OS (\d+[_\d]*)/) || [])[1] || '?'}`,
+  ].join('\n');
+  p.remove();
 }
 window.addEventListener('hashchange', () => { render(); $('#app').scrollTop = 0; });
 

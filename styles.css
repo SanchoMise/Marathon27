@@ -258,3 +258,5 @@ nav a:focus-visible { outline-color: #fff; }
 .exos li b { font-weight: 800; font-size: 17px; }
 .exos li span { font-size: 14px; opacity: .88; }
 .acc-body .exos { --chip: var(--bg); --on: var(--ink); padding: 0; margin: 0; }
+
+pre.tech { margin: 0; font: 13px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
