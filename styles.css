@@ -49,8 +49,8 @@ body {
 }
 /* Le contenu défile dans #app : la barre de navigation reste donc toujours au même endroit, quelle que soit la longueur de la page. */
 #app {
-  position: fixed; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; outline: none;
-  padding: calc(20px + env(safe-area-inset-top)) max(16px, calc((100% - 520px) / 2)) 140px;
+  position: fixed; top: 0; left: 0; right: 0; bottom: calc(-1 * var(--gap, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; outline: none;
+  padding: calc(20px + env(safe-area-inset-top)) max(16px, calc((100% - 520px) / 2)) calc(140px + var(--gap, 0px));
 }
 h1, h2, h3, p { margin: 0; }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -216,7 +216,7 @@ textarea.io { width: 100%; min-height: 140px; border-radius: 16px; border: 2px s
 
 /* ---------- Navigation ---------- */
 nav#nav {
-  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom));
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom) - var(--gap, 0px));
   background: var(--nav-bg); border-radius: 999px; padding: 8px; display: flex; gap: 6px; z-index: 20;
   box-shadow: 0 10px 30px rgba(0,0,0,.28); max-width: calc(100vw - 24px);
 }

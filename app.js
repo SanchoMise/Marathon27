@@ -615,6 +615,18 @@ function render() {
   techInfo();
   $('#nav').innerHTML = NAV.map(([k, label, icon]) => `<a href="#${k}" ${k === r ? 'aria-current="page"' : ''} aria-label="${label}">${icon}<span class="t">${label}</span></a>`).join('');
 }
+// iOS, app installée, barre d'état translucide : la page annonce une hauteur plus courte que l'écran (la hauteur de la barre d'état en moins).
+// On mesure l'écart et on étire la zone de défilement et la barre d'autant.
+function fitViewport() {
+  const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+  const portrait = innerHeight > innerWidth;
+  const gap = standalone && portrait ? Math.max(0, Math.min(screen.height - innerHeight, 80)) : 0;
+  document.documentElement.style.setProperty('--gap', gap + 'px');
+}
+fitViewport();
+window.addEventListener('resize', fitViewport);
+window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
+
 function techInfo() {
   const out = $('#tech-out'); if (!out) return;
   const p = document.createElement('div');
@@ -626,6 +638,7 @@ function techInfo() {
     `screen : ${screen.width} x ${screen.height}`,
     `innerHeight : ${innerHeight}`, `visualViewport : ${vv ? Math.round(vv.height) : '?'}`,
     `safe haut / bas : ${cs.paddingTop} / ${cs.paddingBottom}`,
+    `écart corrigé : ${getComputedStyle(document.documentElement).getPropertyValue('--gap')}`,
     `bas de #app : ${Math.round(app.bottom)}`, `bas de la barre : ${Math.round(nav.bottom)}`,
     `iOS : ${(navigator.userAgent.match(/OS (\d+[_\d]*)/) || [])[1] || '?'}`,
   ].join('\n');
