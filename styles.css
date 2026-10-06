@@ -254,3 +254,13 @@ nav a:focus-visible { outline-color: #fff; }
 .exos li span { font-size: 14px; opacity: .88; }
 .acc-body .exos { --chip: var(--bg); --on: var(--ink); padding: 0; margin: 0; }
 
+
+/* Flou progressif sous la barre de navigation (comme derrière la barre d'état d'iOS) */
+.blur-bottom { position: fixed; left: 0; right: 0; bottom: 0; height: calc(150px + env(safe-area-inset-bottom)); pointer-events: none; z-index: 15; }
+.blur-bottom::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent, var(--bg)); opacity: .65; }
+.blur-bottom i { position: absolute; inset: 0; }
+.blur-bottom i:nth-child(1) { -webkit-backdrop-filter: blur(.6px); backdrop-filter: blur(.6px); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 40%, transparent 60%); mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 40%, transparent 60%); }
+.blur-bottom i:nth-child(2) { -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px); -webkit-mask-image: linear-gradient(to bottom, transparent 20%, #000 40%, #000 60%, transparent 80%); mask-image: linear-gradient(to bottom, transparent 20%, #000 40%, #000 60%, transparent 80%); }
+.blur-bottom i:nth-child(3) { -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); -webkit-mask-image: linear-gradient(to bottom, transparent 40%, #000 60%, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 40%, #000 60%, #000 80%, transparent 100%); }
+.blur-bottom i:nth-child(4) { -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); -webkit-mask-image: linear-gradient(to bottom, transparent 60%, #000 80%, #000 100%); mask-image: linear-gradient(to bottom, transparent 60%, #000 80%, #000 100%); }
+.blur-bottom i:nth-child(5) { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); -webkit-mask-image: linear-gradient(to bottom, transparent 80%, #000 100%); mask-image: linear-gradient(to bottom, transparent 80%, #000 100%); }
