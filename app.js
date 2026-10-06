@@ -604,47 +604,34 @@ function route() { const r = location.hash.slice(1); return VIEWS[r] ? r : 'toda
 function render() {
   const r = route();
   const app = $('#app');
-  const top = app.scrollTop;
   const open = [...document.querySelectorAll('details[open]')].map(d => d.id).filter(Boolean);
   const io = $('#io') ? $('#io').value : '';
   app.innerHTML = VIEWS[r]();
   open.forEach(id => { const d = document.getElementById(id); if (d && r !== 'plan') d.open = true; });
   if (r === 'plan') open.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
   if (io && $('#io')) $('#io').value = io;
-  app.scrollTop = top;
   techInfo();
   $('#nav').innerHTML = NAV.map(([k, label, icon]) => `<a href="#${k}" ${k === r ? 'aria-current="page"' : ''} aria-label="${label}">${icon}<span class="t">${label}</span></a>`).join('');
 }
-// iOS, app installée, barre d'état translucide : la page annonce une hauteur plus courte que l'écran (la hauteur de la barre d'état en moins).
-// On mesure l'écart et on étire la zone de défilement et la barre d'autant.
-function fitViewport() {
-  const standalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
-  const portrait = innerHeight > innerWidth;
-  const gap = standalone && portrait ? Math.max(0, Math.min(screen.height - innerHeight, 80)) : 0;
-  document.documentElement.style.setProperty('--gap', gap + 'px');
-}
-fitViewport();
-window.addEventListener('resize', fitViewport);
-window.addEventListener('orientationchange', () => setTimeout(fitViewport, 300));
-
 function techInfo() {
   const out = $('#tech-out'); if (!out) return;
   const p = document.createElement('div');
   p.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)';
   document.body.appendChild(p);
+  const q = document.createElement('div'); q.style.cssText = 'position:fixed;visibility:hidden;height:100vh'; document.body.appendChild(q); const probe = q.getBoundingClientRect().height; q.remove();
   const cs = getComputedStyle(p), vv = window.visualViewport, app = $('#app').getBoundingClientRect(), nav = $('#nav').getBoundingClientRect();
   out.textContent = [
     `mode standalone : ${navigator.standalone === true || matchMedia('(display-mode: standalone)').matches}`,
     `screen : ${screen.width} x ${screen.height}`,
     `innerHeight : ${innerHeight}`, `visualViewport : ${vv ? Math.round(vv.height) : '?'}`,
     `safe haut / bas : ${cs.paddingTop} / ${cs.paddingBottom}`,
-    `écart corrigé : ${getComputedStyle(document.documentElement).getPropertyValue('--gap')}`,
+    `100vh : ${Math.round(probe)} · défilable : ${document.documentElement.scrollHeight > innerHeight}`,
     `bas de #app : ${Math.round(app.bottom)}`, `bas de la barre : ${Math.round(nav.bottom)}`,
     `iOS : ${(navigator.userAgent.match(/OS (\d+[_\d]*)/) || [])[1] || '?'}`,
   ].join('\n');
   p.remove();
 }
-window.addEventListener('hashchange', () => { render(); $('#app').scrollTop = 0; });
+window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
 
 /* ---------- Démarrage ---------- */
 (async function init() {
