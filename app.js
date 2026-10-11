@@ -1,7 +1,7 @@
 // Marathon 27 · suivi de prépa. Site statique, progression en localStorage.
 const KEY = 'marathon27:v1';
 // Lien de lecture seule : ?lecture=CODE. On affiche la progression partagée, sans jamais rien écrire.
-const SHARE = new URLSearchParams(location.search).get('lecture');
+const SHARE = (location.pathname.match(/^\/suivi\/([A-Za-z0-9-]{16,64})\/?$/) || [])[1] || new URLSearchParams(location.search).get('lecture');
 const READONLY = !!SHARE;
 const RACE = '2027-04-04';
 const $ = (s, el = document) => el.querySelector(s);
@@ -505,7 +505,7 @@ function viewMoreFull() {
 const CODE_KEY = 'marathon27:code';
 let syncInfo = { text: '', busy: false };
 let shareCode = ''; // lien de lecture seule actif (code), connu après une synchro
-const shareUrl = c => `${location.origin}${location.pathname}?lecture=${c}`;
+const shareUrl = c => `${location.origin}/suivi/${c}`;
 const getCode = () => { if (READONLY) return ''; try { return localStorage.getItem(CODE_KEY) || ''; } catch (e) { return ''; } };
 const setCode = c => { try { c ? localStorage.setItem(CODE_KEY, c) : localStorage.removeItem(CODE_KEY); } catch (e) { /* ignoré */ } };
 function newCode() {
@@ -753,12 +753,13 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
 /* ---------- Démarrage ---------- */
 (async function init() {
   try {
-    PLAN = await (await fetch('plan.json')).json();
+    PLAN = await (await fetch('/plan.json')).json();
     WEEKS = PLAN.weeks;
     SESSIONS = WEEKS.flatMap(w => w.sessions);
     load();
+    if (READONLY) { const m = document.querySelector('link[rel=manifest]'); if (m) m.remove(); } // pas d'installation de la vue partagée comme app
     if (READONLY) { render(); await refreshShared(); } else { render(); syncNow(true); }
-    if (!READONLY && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+    if (!READONLY && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('/sw.js').catch(() => {});
   } catch (e) {
     $('#app').innerHTML = '<p style="padding:24px">Impossible de charger le plan. Vérifie ta connexion et recharge la page.</p>';
   }

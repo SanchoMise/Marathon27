@@ -31,3 +31,4 @@ def make(n, out, fill=0.86):
     bg.paste(g, mask=mask)
     bg.resize((n, n), Image.LANCZOS).save(out)
 make(512, 'icons/icon-512.png'); make(192, 'icons/icon-192.png'); make(180, 'icons/apple-touch-icon.png')
+
