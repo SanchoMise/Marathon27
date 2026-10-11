@@ -291,3 +291,8 @@ nav a:focus-visible { outline-color: #fff; }
 .stats-line.hint { color: var(--ink-soft); font-weight: 600; }
 span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 .row .when, .row .what { display: block; }
+
+.where[hidden] { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip-btn { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--line); background: transparent; color: var(--ink); font-weight: 700; font-size: 15px; }
+.where-line { color: var(--ink); }

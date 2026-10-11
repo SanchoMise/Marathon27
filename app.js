@@ -63,7 +63,7 @@ function normalize(o) {
   const ids = new Set(SESSIONS ? SESSIONS.map(s => s.id) : []);
   const r = { done: {}, skipped: {}, u: {} };
   for (const [id, v] of Object.entries((o && o.done) || {})) {
-    if (!ids.size || ids.has(id)) { r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null }; const st = cleanStats(v.stats); if (st) r.done[id].stats = st; }
+    if (!ids.size || ids.has(id)) { r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null }; const st = cleanStats(v.stats); if (st) r.done[id].stats = st; if (typeof v.where === 'string' && v.where.trim() && r.done[id].knee && r.done[id].knee !== 'ras') r.done[id].where = v.where.trim().slice(0, 80); }
   }
   for (const id of Object.keys((o && o.skipped) || {})) if (!ids.size || ids.has(id)) r.skipped[id] = true;
   const u = (o && o.u) || {};
@@ -238,7 +238,7 @@ function sessionRow(s, opts = {}) {
   const skipped = state.skipped[s.id];
   return `<div class="row ${done ? 'is-done' : ''}">
     <span class="stripe ${t.cls}"></span>
-    ${done ? `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span></button>` : `<div>${rowText(s, skipped)}</div>`}
+    ${done ? `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span>${state.done[s.id].where ? `<span class="stats-line where-line">${KNEE[state.done[s.id].knee]} : ${esc(state.done[s.id].where)}</span>` : ''}</button>` : `<div>${rowText(s, skipped)}</div>`}
     <div class="acts">${done ? kneeTag(s.id) : ''}${opts.late && !done ? `<button class="mini" data-a="skip" data-id="${s.id}">Passer</button>` : ''}
       <button class="check" data-a="toggle" data-id="${s.id}" aria-pressed="${done}" aria-label="${done ? 'Annuler la validation' : 'Valider'} : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${I.check}</button></div>
   </div>`;
@@ -280,8 +280,8 @@ function viewToday() {
     html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Séance du jour</h2></div><div class="list">${sessionRow(doneToday)}</div>${cheerCard(cheerFor(doneToday), true)}`;
   }
   if (hero) {
-    if (doneToday) html += `<div class="block-title" style="margin:22px 0 8px"><h2 class="h2">Ensuite</h2></div>`;
-    html += heroCard(hero, todays === hero);
+    if (doneToday) html += `<div class="block-title" style="margin:22px 0 8px"><h2 class="h2">Prochaine séance</h2></div>`;
+    html += heroCard(hero, todays === hero, !!doneToday);
   } else html += `<div class="card t-rest hero"><h2>Tout est validé pour l’instant.</h2></div>`;
 
   if (!doneToday) html += cheerCard(pick(DAILY, TODAY), false);
@@ -308,11 +308,11 @@ function cheerCard(text, after) {
   return `<figure class="quote"><figcaption>${after ? 'Bien joué' : 'Un mot pour toi'}</figcaption><blockquote>${esc(text)}</blockquote></figure>`;
 }
 
-function heroCard(s, isToday) {
+function heroCard(s, isToday, afterDone) {
   const t = TYPES[s.type];
   const done = isDone(s.id);
   const m = minutesOf(s);
-  const when = isToday ? 'Aujourd’hui' : TODAY < s.date ? `Prochaine séance · ${fmtDate(s.date)}` : fmtDate(s.date);
+  const when = isToday ? 'Aujourd’hui' : afterDone ? fmtDate(s.date) : TODAY < s.date ? `Prochaine séance · ${fmtDate(s.date)}` : fmtDate(s.date);
   const big = s.type === 'race'
     ? `<span class="n" style="font-size:clamp(64px,22vw,104px)">42,2</span><span class="u">km</span>`
     : m >= 60 ? `<span class="n">${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}</span>` : `<span class="n">${m}</span><span class="u">min</span>`;
@@ -334,11 +334,15 @@ function heroCard(s, isToday) {
   </article>`;
 }
 
+function lastWhere() {
+  const list = SESSIONS.filter(x => state.done[x.id] && state.done[x.id].where).sort((p, q) => p.date.localeCompare(q.date));
+  return list.length ? state.done[list[list.length - 1].id].where : '';
+}
 function alertBox(kind) {
   const title = kind === 'douleur' ? 'Une douleur est notée' : 'Deux gênes de suite';
   return `<div class="alert" role="alert"><h3>${I.warn} ${title}</h3>
     <p><b>Lève le pied.</b> Ne rallonge pas ta prochaine sortie longue et laisse le corps récupérer.</p>
-    <p>Pense à voir un kiné du sport. Cette appli ne pose aucun diagnostic.</p></div>`;
+    <p>Pense à voir un kiné du sport. Cette appli ne pose aucun diagnostic.</p>${lastWhere() ? `<p class="small muted">Dernière note : ${esc(lastWhere())}.</p>` : ''}</div>`;
 }
 
 function contextNotes(cw) {
@@ -525,12 +529,23 @@ function schedulePush() { if (!getCode()) return; clearTimeout(pushTimer); pushT
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(true); });
 
 /* ---------- Bottom sheet : ressenti des genoux ---------- */
+// Valeurs attendues d'une séance : durée du plan, distance selon les allures cibles (facile 7:00, allure marathon 6:25, soutenu 6:00 au km)
+function expectedStats(s) {
+  if (s.type === 'race') return { km: 42.2, min: 270 };
+  const m = minutesOf(s); if (!m) return null;
+  const b = s.title.match(/(\d+) × (\d+) min soutenu/), q = s.title.match(/dont (\d+) min allure marathon/);
+  const hard = b ? b[1] * b[2] : 0, mp = q ? +q[1] : 0, easy = Math.max(0, m - hard - mp);
+  const km = (hard * 60) / 360 + (mp * 60) / 385 + (easy * 60) / 420;
+  return { km: Math.round(km * 10) / 10, min: m };
+}
 let sheetKnee = null;
 function openKnee(id, fresh) {
   const s = SESSIONS.find(x => x.id === id);
   const d = state.done[id] || {};
-  const st = d.stats || {};
+  const prefill = !d.stats && isRun(s) ? expectedStats(s) : null;
+  const st = d.stats || prefill || {};
   sheetKnee = d.knee || null;
+  const whereOn = k => k === 'gene' || k === 'douleur';
   const kb = (k, label) => `<button type="button" class="opt ${k}" data-a="pick-knee" data-k="${k}" aria-pressed="${sheetKnee === k}">${label}</button>`;
   const field = (name, label, val, mode, ph) => `<label class="fld"><span>${label}</span><input name="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${val == null ? '' : esc(String(val).replace('.', name === 'pace' ? '.' : ','))}"></label>`;
   const full = isRun(s);
@@ -539,7 +554,11 @@ function openKnee(id, fresh) {
     <h2 id="sh-t">Comment c’était ?</h2><p>${esc(titleOf(s))} · tout est optionnel.</p>
     <h3 class="sh-h">Tes genoux</h3>
     <div class="knee-opts">${kb('ras', 'RAS')}${kb('gene', 'Gêne')}${kb('douleur', 'Douleur')}</div>
-    ${isRun(s) ? `<h3 class="sh-h">Tes stats</h3><p class="small muted" style="margin:0 0 8px">Recopie ce qui est sur la montre ou le tapis.</p>
+    <div class="where" id="where-box" ${whereOn(sheetKnee) ? '' : 'hidden'}>
+      <label class="fld wide"><span>Où ? (précision)</span><input name="where" autocomplete="off" placeholder="genou droit, cheville gauche…" value="${esc(d.where || '')}"></label>
+      <div class="chips">${['genou droit', 'genou gauche', 'cheville droite', 'cheville gauche', 'mollet', 'hanche', 'dos'].map(w => `<button type="button" class="chip-btn" data-a="where-chip" data-v="${w}">${w}</button>`).join('')}</div>
+    </div>
+    ${isRun(s) ? `<h3 class="sh-h">Tes stats</h3><p class="small muted" style="margin:0 0 8px">${prefill ? 'Pré-rempli avec ce que le plan prévoit : change ce qui diffère.' : 'Recopie ce qui est sur la montre ou le tapis.'}</p>
     <div class="flds">
       ${field('km', 'Distance (km)', st.km, 'decimal', '5,2')}
       ${field('min', 'Durée (min)', st.min, 'decimal', '32')}
@@ -600,7 +619,9 @@ const actions = {
   'pick-knee': e => {
     sheetKnee = sheetKnee === e.dataset.k ? null : e.dataset.k;
     document.querySelectorAll('#sheet-form .opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === sheetKnee)));
+    const box = $('#where-box'); if (box) box.hidden = !(sheetKnee === 'gene' || sheetKnee === 'douleur');
   },
+  'where-chip': e => { const i = $('#sheet-form input[name=where]'); if (i) { i.value = e.dataset.v; i.focus(); } },
   pick: e => { selectedWeek = +e.dataset.n; render(); const g = document.querySelector(`[data-a="pick"][data-n="${selectedWeek}"]`); if (g) g.focus(); },
   goto: e => { location.hash = '#more'; setTimeout(() => { const d = document.getElementById(e.dataset.t); if (d) { d.open = true; d.scrollIntoView(); } }, 0); },
   ics: () => {
@@ -635,7 +656,10 @@ document.addEventListener('submit', ev => {
   const v = n => (f.elements[n] ? f.elements[n].value : '');
   const pace = String(v('pace')).trim().replace(',', ':').replace('.', ':');
   const stats = cleanStats({ km: num(v('km')), min: num(v('min')), hr: num(v('hr')), pace, note: v('note') });
-  d.knee = sheetKnee; if (stats) d.stats = stats; else delete d.stats;
+  d.knee = sheetKnee;
+  const where = (v('where') || '').trim().slice(0, 80);
+  if (where && (sheetKnee === 'gene' || sheetKnee === 'douleur')) d.where = where; else delete d.where;
+  if (stats) d.stats = stats; else delete d.stats;
   touch(id); save(); closeSheet(); render();
 });
 // Clavier ouvert : on amène le champ au centre de l'écran.
