@@ -1,5 +1,8 @@
 // Marathon 27 · suivi de prépa. Site statique, progression en localStorage.
 const KEY = 'marathon27:v1';
+// Lien de lecture seule : ?lecture=CODE. On affiche la progression partagée, sans jamais rien écrire.
+const SHARE = new URLSearchParams(location.search).get('lecture');
+const READONLY = !!SHARE;
 const RACE = '2027-04-04';
 const $ = (s, el = document) => el.querySelector(s);
 
@@ -49,12 +52,14 @@ let state = { done: {}, skipped: {}, u: {} }; // u : date de dernière modificat
 let TODAY = todayStr();
 
 function load() {
+  if (READONLY) return;
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) state = normalize(JSON.parse(raw));
   } catch (e) { /* stockage indisponible : on continue en mémoire */ }
 }
 function save() {
+  if (READONLY) return;
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignoré */ }
   schedulePush();
 }
@@ -231,16 +236,28 @@ const rowText = (s, skipped) => `<span class="when">${fmtDate(s.date)} · ${s.pl
 function sessionRow(s, opts = {}) {
   const t = TYPES[s.type];
   const done = isDone(s.id);
-  const dur = s.minutes ? ` · ${fmtDur(minutesOf(s))}` : '';
   if (s.type === 'rest') {
     return `<div class="row"><span class="stripe t-rest"></span><div><div class="when">${fmtDate(s.date)}</div><div class="what">Repos. Rien à faire.</div></div><span></span></div>`;
   }
   const skipped = state.skipped[s.id];
+  const d = state.done[s.id] || {};
+  const where = d.where ? `<span class="stats-line where-line">${KNEE[d.knee]} : ${esc(d.where)}</span>` : '';
+  const note = READONLY && d.stats && d.stats.note ? `<span class="stats-line">« ${esc(d.stats.note)} »</span>` : '';
+  let main;
+  if (done && READONLY) {
+    main = `<div>${rowText(s, skipped)}${statsLine(s.id) ? `<span class="stats-line">${esc(statsLine(s.id))}</span>` : ''}${where}${note}</div>`;
+  } else if (done) {
+    main = `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span>${where}</button>`;
+  } else {
+    main = `<div>${rowText(s, skipped)}</div>`;
+  }
+  const acts = READONLY
+    ? `<span class="check ro" role="img" aria-label="${done ? 'Validée' : 'À faire'}">${I.check}</span>`
+    : `${opts.late && !done ? `<button class="mini" data-a="skip" data-id="${s.id}">Passer</button>` : ''}<button class="check" data-a="toggle" data-id="${s.id}" aria-pressed="${done}" aria-label="${done ? 'Annuler la validation' : 'Valider'} : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${I.check}</button>`;
   return `<div class="row ${done ? 'is-done' : ''}">
     <span class="stripe ${t.cls}"></span>
-    ${done ? `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span>${state.done[s.id].where ? `<span class="stats-line where-line">${KNEE[state.done[s.id].knee]} : ${esc(state.done[s.id].where)}</span>` : ''}</button>` : `<div>${rowText(s, skipped)}</div>`}
-    <div class="acts">${done ? kneeTag(s.id) : ''}${opts.late && !done ? `<button class="mini" data-a="skip" data-id="${s.id}">Passer</button>` : ''}
-      <button class="check" data-a="toggle" data-id="${s.id}" aria-pressed="${done}" aria-label="${done ? 'Annuler la validation' : 'Valider'} : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${I.check}</button></div>
+    ${main}
+    <div class="acts">${done ? kneeTag(s.id) : ''}${acts}</div>
   </div>`;
 }
 const segs = (d, total) => `<div class="segs" role="img" aria-label="${d} séances sur ${total} cette semaine">${Array.from({ length: total }, (_, i) => `<span class="seg ${i < d ? 'on' : ''}"><i></i></span>`).join('')}</div>`;
@@ -288,8 +305,8 @@ function viewToday() {
 
   html += contextNotes(cw);
   if (late.length) {
-    html += `<div class="block" style="margin-top:22px"><div class="block-title"><h2 class="h2">Séances passées</h2></div>
-      <p class="small muted" style="margin-bottom:10px">On ne rattrape rien. Coche ce que tu as fait, ou passe le reste.</p>
+    html += `<div class="block" style="margin-top:22px"><div class="block-title"><h2 class="h2">${READONLY ? 'Passées, non validées' : 'Séances passées'}</h2></div>
+      ${READONLY ? '' : '<p class="small muted" style="margin-bottom:10px">On ne rattrape rien. Coche ce que tu as fait, ou passe le reste.</p>'}
       <div class="list">${late.map(s => sessionRow(s, { late: true })).join('')}</div></div>`;
   }
 
@@ -305,6 +322,7 @@ function viewToday() {
 }
 
 function cheerCard(text, after) {
+  if (READONLY) return '';
   return `<figure class="quote"><figcaption>${after ? 'Bien joué' : 'Un mot pour toi'}</figcaption><blockquote>${esc(text)}</blockquote></figure>`;
 }
 
@@ -326,7 +344,7 @@ function heroCard(s, isToday, afterDone) {
     ${tipOf(s) ? `<p class="tip">${esc(tipOf(s))}</p>` : ''}
     ${s.type === 'renfo' && s.day === 'lun' ? exoList(s) : ''}
     <div class="cta-row">
-      ${done
+      ${READONLY ? '' : done
         ? `<span class="done-badge">${I.check.replace('<svg', '<svg width="28" height="28"')} Validée</span>${kneeTag(s.id)}<button class="btn ghost small" data-a="toggle" data-id="${s.id}">Annuler</button>`
         : `<button class="btn" data-a="toggle" data-id="${s.id}">${I.check.replace('<svg', '<svg width="24" height="24"')} C’est fait</button>`}
       ${s.type === 'renfo' && s.day !== 'lun' ? `<button class="btn ghost small" data-a="goto" data-t="renfo">Voir les exercices</button>` : ''}
@@ -422,6 +440,10 @@ function viewProfile() {
 
 /* ---------- Écran : Plus (renfo, repères, calendrier, sauvegarde, montre) ---------- */
 function viewMore() {
+  const h = viewMoreFull();
+  return READONLY ? h.replace(/<details class="acc" id="watch">[\s\S]*?<\/details>/, '').replace(/<details class="acc" id="sauvegarde">[\s\S]*?<\/details>/, '') : h;
+}
+function viewMoreFull() {
   return `<h1 class="display" style="font-size:72px">Plus</h1>
   <details class="acc" id="renfo"><summary>Renfo</summary><div class="acc-body">
     <p class="muted">Le renfo protège tes genoux plus qu’une sortie de plus. Contenu général, à faire valider par ton kiné.</p>
@@ -482,7 +504,9 @@ function viewMore() {
 /* ---------- Synchronisation (Upstash via /api/sync) ---------- */
 const CODE_KEY = 'marathon27:code';
 let syncInfo = { text: '', busy: false };
-const getCode = () => { try { return localStorage.getItem(CODE_KEY) || ''; } catch (e) { return ''; } };
+let shareCode = ''; // lien de lecture seule actif (code), connu après une synchro
+const shareUrl = c => `${location.origin}${location.pathname}?lecture=${c}`;
+const getCode = () => { if (READONLY) return ''; try { return localStorage.getItem(CODE_KEY) || ''; } catch (e) { return ''; } };
 const setCode = c => { try { c ? localStorage.setItem(CODE_KEY, c) : localStorage.removeItem(CODE_KEY); } catch (e) { /* ignoré */ } };
 function newCode() {
   const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', b = crypto.getRandomValues(new Uint8Array(20));
@@ -501,32 +525,56 @@ function syncPanel() {
   return `<p><b>Synchro active.</b> Garde ce code : il ouvre ta progression, ne le partage pas.</p>
     <div class="code-show">${esc(code)}</div>
     <div class="btns"><button class="btn small line" data-a="sync-copy">Copier</button><button class="btn small" data-a="sync-now">Synchroniser</button><button class="btn small line" data-a="sync-off">Déconnecter</button></div>
-    <p class="small muted" id="sync-msg" role="status">${esc(syncInfo.text)}</p>`;
+    <p class="small muted" id="sync-msg" role="status">${esc(syncInfo.text)}</p>
+    <h3 class="sh-h">Lien en lecture seule</h3>
+    ${shareCode
+      ? `<p class="small">Envoie ce lien à ta kiné : elle voit tout, mais ne peut rien modifier.</p>
+         <div class="code-show">${esc(shareUrl(shareCode))}</div>
+         <div class="btns"><button class="btn small line" data-a="share-copy">Copier le lien</button><button class="btn small line" data-a="share-off">Désactiver le lien</button></div>`
+      : `<p class="small muted">Crée un lien secret pour qu’une personne puisse suivre ta progression, sans pouvoir la modifier.</p>
+         <div class="btns"><button class="btn small" data-a="share-new">Créer un lien de lecture</button></div>`}`;
 }
 const syncMsg = t => { syncInfo.text = t; const m = $('#sync-msg'); if (m) m.textContent = t; };
 async function api(code, body) {
   const r = await fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, ...body }) });
-  if (!r.ok) throw new Error('http ' + r.status);
+  if (!r.ok) { const e = new Error('http ' + r.status); e.status = r.status; throw e; }
   return r.json();
 }
 async function syncNow(quiet) {
+  if (READONLY) return;
   const code = getCode(); if (!code || syncInfo.busy) return;
   syncInfo.busy = true;
   try {
-    const { state: remote } = await api(code, { action: 'get' });
+    const { state: remote, share } = await api(code, { action: 'get' });
+    const shareChanged = (share || '') !== shareCode;
+    shareCode = share || '';
     const before = JSON.stringify(state);
     state = mergeStates(state, normalize(remote || {}));
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignoré */ }
     await api(code, { action: 'put', state });
     syncMsg('Synchronisé à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '.');
-    if (JSON.stringify(state) !== before) render();
+    if (JSON.stringify(state) !== before || shareChanged) render();
   } catch (e) {
     syncMsg(quiet ? 'Hors ligne : ce sera synchronisé plus tard.' : 'Synchro impossible pour l’instant. Réessaie, ta progression reste sur cet appareil.');
   } finally { syncInfo.busy = false; }
 }
 let pushTimer;
 function schedulePush() { if (!getCode()) return; clearTimeout(pushTimer); pushTimer = setTimeout(() => syncNow(true), 900); }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(true); });
+let sharedAt = null, sharedError = '';
+async function refreshShared() {
+  try {
+    const { state: remote } = await api(null, { action: 'read', share: SHARE });
+    state = normalize(remote || {});
+    sharedAt = new Date(); sharedError = '';
+  } catch (e) {
+    sharedError = e.status === 404 ? 'Ce lien n’est plus actif.' : 'Impossible de charger la progression pour l’instant.';
+  }
+  render();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (READONLY) refreshShared(); else syncNow(true);
+});
 
 /* ---------- Bottom sheet : ressenti des genoux ---------- */
 // Valeurs attendues d'une séance : durée du plan, distance selon les allures cibles (facile 7:00, allure marathon 6:25, soutenu 6:00 au km)
@@ -603,6 +651,18 @@ function toggle(id) {
   openKnee(id, true);
 }
 const actions = {
+  'share-new': async () => {
+    const code = getCode(); if (!code) return;
+    try { shareCode = (await api(code, { action: 'share-create' })).share || ''; render(); }
+    catch (e) { syncMsg('Impossible de créer le lien pour l’instant. Réessaie.'); }
+  },
+  'share-copy': async () => { try { await navigator.clipboard.writeText(shareUrl(shareCode)); syncMsg('Lien copié.'); } catch (e) { syncMsg('Copie-le à la main.'); } },
+  'share-off': async () => {
+    if (!confirm('Désactiver le lien ? La personne ne pourra plus voir ta progression avec ce lien.')) return;
+    try { await api(getCode(), { action: 'share-revoke' }); shareCode = ''; render(); }
+    catch (e) { syncMsg('Impossible de désactiver le lien pour l’instant. Réessaie.'); }
+  },
+  refresh: () => refreshShared(),
   'sync-new': () => { setCode(newCode()); syncMsg(''); render(); syncNow(); },
   'sync-join': () => {
     const c = ($('#code-in').value || '').trim().toUpperCase();
@@ -647,7 +707,9 @@ const msg = t => { const m = $('#io-msg'); if (m) m.textContent = t; };
 
 document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-a]');
-  if (el && actions[el.dataset.a]) actions[el.dataset.a](el, ev);
+  if (!el || !actions[el.dataset.a]) return;
+  if (READONLY && !['pick', 'goto', 'ics', 'refresh'].includes(el.dataset.a)) return; // lecture seule : rien ne se modifie
+  actions[el.dataset.a](el, ev);
 });
 document.addEventListener('submit', ev => {
   const f = ev.target.closest('#sheet-form'); if (!f) return;
@@ -679,7 +741,8 @@ function render() {
   const app = $('#app');
   const open = [...document.querySelectorAll('details[open]')].map(d => d.id).filter(Boolean);
   const io = $('#io') ? $('#io').value : '';
-  app.innerHTML = VIEWS[r]();
+  const banner = READONLY ? `<div class="ro-banner" role="status"><span><b>Lecture seule.</b> ${sharedError ? esc(sharedError) : `Tu consultes la progression, sans pouvoir la modifier.${sharedAt ? ` Mise à jour à ${sharedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.` : ''}`}</span><button type="button" class="mini" data-a="refresh">Actualiser</button></div>` : '';
+  app.innerHTML = banner + VIEWS[r]();
   open.forEach(id => { const d = document.getElementById(id); if (d && r !== 'plan') d.open = true; });
   if (r === 'plan') open.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
   if (io && $('#io')) $('#io').value = io;
@@ -694,9 +757,8 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
     WEEKS = PLAN.weeks;
     SESSIONS = WEEKS.flatMap(w => w.sessions);
     load();
-    render();
-    syncNow(true);
-    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+    if (READONLY) { render(); await refreshShared(); } else { render(); syncNow(true); }
+    if (!READONLY && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   } catch (e) {
     $('#app').innerHTML = '<p style="padding:24px">Impossible de charger le plan. Vérifie ta connexion et recharge la page.</p>';
   }
