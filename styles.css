@@ -313,5 +313,5 @@ span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 .row.is-skipped .what { color: var(--ink-soft); }
 
 /* Points de semaine : séance passée */
-.wprog .dots i.skip { background: var(--orange); }
-@media (prefers-color-scheme: dark) { .wprog .dots i.skip { background: var(--pink); } }
+.wprog .dots i.passed { background: var(--orange); }
+@media (prefers-color-scheme: dark) { .wprog .dots i.passed { background: var(--pink); } }

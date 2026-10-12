@@ -406,7 +406,7 @@ function viewPlan() {
       return `<details class="week ${isCur ? 'current' : ''}" ${isCur ? 'open' : ''} id="w${w.n}">
         <summary><span class="wnum display">${w.n}</span>
           <span class="wmeta">${fmtDate(w.start, { day: 'numeric', month: 'short' })} · ${w.phase}${w.allegee ? '<span class="tagpill">allégée</span>' : ''}${w.tag && !w.allegee ? `<span class="wsub">${esc(w.tag)}</span>` : `<span class="wsub">${w.allegee ? 'On ne la saute pas' : '&nbsp;'}</span>`}</span>
-          <span class="wprog">${st.done}/${st.total}<span class="dots" aria-hidden="true">${w.sessions.filter(counts).map(x => `<i class="${isDone(x.id) ? 'on' : state.skipped[x.id] ? 'skip' : ''}"></i>`).join('')}</span></span></summary>
+          <span class="wprog">${st.done}/${st.total}<span class="dots" aria-hidden="true">${w.sessions.filter(counts).map(x => `<i class="${isDone(x.id) ? 'on' : state.skipped[x.id] ? 'passed' : ''}"></i>`).join('')}</span></span></summary>
         <div class="list">${w.sessions.map(s => sessionRow(s)).join('')}</div></details>`;
     }).join('')}</div>`;
 }
