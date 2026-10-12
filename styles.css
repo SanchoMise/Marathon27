@@ -311,3 +311,7 @@ span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 .check.skipped { border-color: var(--ink-soft); color: var(--ink-soft); }
 .check.ro.skipped svg { opacity: 1; }
 .row.is-skipped .what { color: var(--ink-soft); }
+
+/* Points de semaine : séance passée */
+.wprog .dots i.skip { background: var(--orange); }
+@media (prefers-color-scheme: dark) { .wprog .dots i.skip { background: var(--pink); } }
