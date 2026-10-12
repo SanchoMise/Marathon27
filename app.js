@@ -24,6 +24,7 @@ const I = {
   plan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"/></svg>',
   profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M5 19v-5M10 19V9M15 19v-8M20 19V5"/></svg>',
   more: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.5" cy="12" r="2"/></svg>',
+  cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>',
   warn: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 3l10 18H2z" stroke-linejoin="round"/><path d="M12 10v5M12 18v.5"/></svg>',
 };
 const NAV = [
@@ -257,10 +258,11 @@ function sessionRow(s, opts = {}) {
   } else {
     main = `<div>${rowText(s, skipped)}</div>`;
   }
+  const passed = !done && skipped;
   const acts = READONLY
-    ? `<span class="check ro" role="img" aria-label="${done ? 'Validée' : 'À faire'}">${I.check}</span>`
-    : `${opts.late && !done ? `<button class="mini" data-a="skip" data-id="${s.id}">Passer</button>` : ''}<button class="check" data-a="toggle" data-id="${s.id}" aria-pressed="${done}" aria-label="${done ? 'Annuler la validation' : 'Valider'} : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${I.check}</button>`;
-  return `<div class="row ${done ? 'is-done' : ''}">
+    ? `<span class="check ro ${passed ? 'skipped' : ''}" role="img" aria-label="${done ? 'Validée' : passed ? 'Passée' : 'À faire'}">${passed ? I.cross : I.check}</span>`
+    : `${opts.late && !done && !passed ? `<button class="mini" data-a="skip" data-id="${s.id}">Passer</button>` : ''}<button class="check ${passed ? 'skipped' : ''}" data-a="toggle" data-id="${s.id}" aria-pressed="${done}" aria-label="${done ? 'Annuler la validation' : passed ? 'Passée, appuie pour la valider' : 'Valider'} : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${passed ? I.cross : I.check}</button>`;
+  return `<div class="row ${done ? 'is-done' : ''} ${passed ? 'is-skipped' : ''}">
     <span class="stripe ${t.cls}"></span>
     ${main}
     <div class="acts">${done ? kneeTag(s.id) : ''}${acts}</div>

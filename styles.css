@@ -306,3 +306,8 @@ span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 .row.is-done .check.ro svg { opacity: 1; }
 .ro-banner > span { flex: 1; min-width: 0; }
 .ro-banner .mini { flex: none; }
+
+/* Séance passée : une croix à la place du rond */
+.check.skipped { border-color: var(--ink-soft); color: var(--ink-soft); }
+.check.ro.skipped svg { opacity: 1; }
+.row.is-skipped .what { color: var(--ink-soft); }
