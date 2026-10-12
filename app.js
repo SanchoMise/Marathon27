@@ -188,6 +188,12 @@ function cheerFor(s) {
   for (const m of [25, 50, 75]) if (pct >= m && prevPct < m) parts.push(MILES[m]);
   return parts.join(' ');
 }
+const SKIP_MSG = [
+  'Pas grave. Une séance ratée ne se rattrape pas : on reprend à la prochaine.',
+  'Ça arrive. Le plan est fait pour absorber ça, on ne compense rien.',
+  'Journée chargée, c’est la vie. Repose-toi, on repart à la prochaine séance.',
+  'Tu as bien fait de lever le pied. La régularité sur la durée, pas sur un jour.',
+];
 const DAILY = [
   'Une séance à la fois. Pas besoin d’en faire plus.',
   'Tu avances à ton rythme, et c’est le bon.',
@@ -276,7 +282,8 @@ function viewToday() {
   const todays = list.find(s => s.date === TODAY);
   const upcoming = list.filter(s => s.date >= TODAY && !isDone(s.id) && !state.skipped[s.id]);
   const doneToday = todays && isDone(todays.id) ? todays : null;
-  const hero = todays && !doneToday ? todays : upcoming[0];
+  const skippedToday = todays && !doneToday && state.skipped[todays.id] ? todays : null;
+  const hero = todays && !doneToday && !skippedToday ? todays : upcoming[0];
   const late = list.filter(s => s.date < TODAY && !isDone(s.id) && !state.skipped[s.id]);
   const nextUp = upcoming.filter(s => !hero || s.id !== hero.id).slice(0, 2);
 
@@ -296,12 +303,17 @@ function viewToday() {
   if (doneToday) {
     html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Séance du jour</h2></div><div class="list">${sessionRow(doneToday)}</div>${cheerCard(cheerFor(doneToday), true)}`;
   }
+  if (skippedToday) {
+    html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Séance du jour</h2></div>
+      <div class="row"><span class="stripe ${TYPES[skippedToday.type].cls}"></span><div>${rowText(skippedToday, true)}</div>
+      <div class="acts"><button class="mini" data-a="unskip" data-id="${skippedToday.id}">Annuler</button></div></div>${cheerCard(pick(SKIP_MSG, skippedToday.id), 'skip')}`;
+  }
   if (hero) {
-    if (doneToday) html += `<div class="block-title" style="margin:22px 0 8px"><h2 class="h2">Prochaine séance</h2></div>`;
-    html += heroCard(hero, todays === hero, !!doneToday);
+    if (doneToday || skippedToday) html += `<div class="block-title" style="margin:22px 0 8px"><h2 class="h2">Prochaine séance</h2></div>`;
+    html += heroCard(hero, todays === hero, !!(doneToday || skippedToday));
   } else html += `<div class="card t-rest hero"><h2>Tout est validé pour l’instant.</h2></div>`;
 
-  if (!doneToday) html += cheerCard(pick(DAILY, TODAY), false);
+  if (!doneToday && !skippedToday) html += cheerCard(pick(DAILY, TODAY), false);
 
   html += contextNotes(cw);
   if (late.length) {
@@ -321,9 +333,9 @@ function viewToday() {
   return html;
 }
 
-function cheerCard(text, after) {
+function cheerCard(text, kind) {
   if (READONLY) return '';
-  return `<figure class="quote"><figcaption>${after ? 'Bien joué' : 'Un mot pour toi'}</figcaption><blockquote>${esc(text)}</blockquote></figure>`;
+  return `<figure class="quote"><figcaption>${kind === 'skip' ? 'Pas grave' : kind ? 'Bien joué' : 'Un mot pour toi'}</figcaption><blockquote>${esc(text)}</blockquote></figure>`;
 }
 
 function heroCard(s, isToday, afterDone) {
@@ -347,6 +359,7 @@ function heroCard(s, isToday, afterDone) {
       ${READONLY ? '' : done
         ? `<span class="done-badge">${I.check.replace('<svg', '<svg width="28" height="28"')} Validée</span>${kneeTag(s.id)}<button class="btn ghost small" data-a="toggle" data-id="${s.id}">Annuler</button>`
         : `<button class="btn" data-a="toggle" data-id="${s.id}">${I.check.replace('<svg', '<svg width="24" height="24"')} C’est fait</button>`}
+      ${!READONLY && !done && s.date <= TODAY ? `<button class="btn ghost small" data-a="skip" data-id="${s.id}">Je passe</button>` : ''}
       ${s.type === 'renfo' && s.day !== 'lun' ? `<button class="btn ghost small" data-a="goto" data-t="renfo">Voir les exercices</button>` : ''}
     </div>
   </article>`;
@@ -673,6 +686,7 @@ const actions = {
   'sync-now': () => syncNow(),
   'sync-off': () => { if (confirm('Déconnecter cet appareil ? Ta progression reste ici, mais ne se synchronise plus.')) { setCode(''); syncMsg(''); render(); } },
   toggle: e => toggle(e.dataset.id),
+  unskip: e => { delete state.skipped[e.dataset.id]; touch(e.dataset.id); save(); render(); },
   skip: e => { state.skipped[e.dataset.id] = true; touch(e.dataset.id); save(); render(); },
   knee: e => openKnee(e.dataset.id, false),
   'close-sheet': (e, ev) => { if (ev.target === e) closeSheet(); },
