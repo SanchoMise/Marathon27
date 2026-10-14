@@ -59,7 +59,7 @@ td i {{ font-style: normal; font-size: 6pt; font-weight: 800; background: #F5A36
 <li><b>Progression :</b> +10 % maximum entre deux vraies sorties longues, une semaine allégée (environ −25 %) toutes les 4 semaines.</li>
 <li><b>Allures :</b> tout en facile (6:45 à 7:15 au km, phrases complètes), sauf les blocs soutenus (5:55 à 6:10) et l'allure marathon (≈ 6:25). Sur tapis, pente de 1 %.</li>
 <li><b>Sortie longue :</b> 1 min de marche toutes les 10 à 15 min dès qu'on dépasse 1 h. Pic à 3h00 en semaine 23, ramené au niveau de la semaine 22 si un genou a protesté.</li>
-<li><b>Renfo A (lundi) :</b> presse à cuisses, curl ischios, montée sur marche basse, pont fessier, mollets, gainage. 2 séries, 3 de la semaine 5 à 22. <b>Renfo B (vendredi, 10 min) :</b> pont fessier, marche latérale avec élastique, mollets, planche.</li>
+<li><b>Renfo A (lundi) :</b> presse à cuisses, curl ischios, montée sur marche basse ou fentes bulgares (une séance sur deux), hip thrust à la machine, mollets, gainage. 2 séries, 3 de la semaine 5 à 22, 90 s de repos entre séries. <b>Renfo B (vendredi, 10 min) :</b> hip thrust à la machine, marche latérale avec élastique, mollets, planche.</li>
 <li><b>À éviter :</b> accroupissements profonds, extension de jambe en charge, fentes avec rotation, sauts.</li>
 <li><b>Règles :</b> une séance ratée ne se rattrape pas. En cas de gêne ou de douleur, on lève le pied et on n'allonge pas la sortie longue.</li>
 </ul></div>

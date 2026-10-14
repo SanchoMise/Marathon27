@@ -203,16 +203,24 @@ const DAILY = [
 ];
 
 /* ---------- Renfo A : toutes les séries d'un exercice, puis on passe au suivant ---------- */
-const EXOS = [
-  ['Presse à cuisses', '10 à 12 répétitions, charge modérée, genoux à 90° max'],
-  ['Curl ischios', '10 à 12 répétitions, montée 2 s, descente 3 s'],
-  ['Montée sur marche basse', '8 par jambe, marche de 15 à 20 cm, bassin stable'],
-  ['Pont fessier', '12 répétitions, sur une jambe quand c’est facile'],
-  ['Mollets debout', '15 répétitions'],
-  ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté'],
-];
+// Renfo A : une séance sur deux, montée sur marche basse (semaines impaires) ou fentes bulgares (semaines paires).
+const EXO_STEP = ['Montée sur marche basse', '8 par jambe, marche de 15 à 20 cm, bassin stable'];
+const EXO_BULG = ['Fentes bulgares', '8 par jambe, pied arrière sur un banc, genou à 90° maximum, descente contrôlée'];
+const EXO_ALT = ['Montée sur marche basse ou fentes bulgares', 'une séance sur deux, en alternance : 8 par jambe, genou à 90° maximum'];
+const exosFor = s => {
+  const wk = s.id ? +s.id.slice(1, 3) : 0;
+  const alt = !wk ? EXO_ALT : wk % 2 ? EXO_STEP : EXO_BULG;
+  return [
+    ['Presse à cuisses', '10 à 12 répétitions, charge modérée, genoux à 90° max'],
+    ['Curl ischios', '10 à 12 répétitions, montée 2 s, descente 3 s'],
+    alt,
+    ['Hip thrust à la machine', '12 répétitions, tu augmentes la charge petit à petit'],
+    ['Mollets debout', '15 répétitions'],
+    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté'],
+  ];
+};
 const setsOf = s => (s.title.match(/(\d) séries/) || [])[1] ? +s.title.match(/(\d) séries/)[1] : 1; // « léger » : 1 série
-const exoList = s => `<ol class="exos">${EXOS.map(([n, d]) => `<li><b>${setsOf(s)} × ${n}</b><span>${d}</span></li>`).join('')}</ol>`;
+const exoList = s => `<ol class="exos">${exosFor(s).map(([n, d]) => `<li><b>${setsOf(s)} × ${n}</b><span>${d}</span></li>`).join('')}</ol>`;
 
 /* ---------- Conseils par type ---------- */
 function tipOf(s) {
@@ -226,7 +234,7 @@ function tipOf(s) {
       ? 'Allure facile. Marche 1 min toutes les 10 à 15 min : c’est prévu, ça fait partie du plan. Chemin ou terre si possible.'
       : 'Allure facile, sur chemin ou terre si possible. Tu t’arrêtes là où le plan s’arrête.';
     case 'renfo': return s.day === 'lun'
-      ? 'À la salle. Toutes les séries d’un exercice, puis tu passes au suivant, avec 60 à 90 s de repos entre séries. Arrête chaque série quand tu sentirais pouvoir en faire encore 2 : pas besoin d’aller jusqu’au bout. Un genou à plus de 3/10 ou un ménisque qui bloque : tu arrêtes l’exercice.'
+      ? 'À la salle. Toutes les séries d’un exercice, puis tu passes au suivant, avec 90 s de repos entre séries. Arrête chaque série quand tu sentirais pouvoir en faire encore 2 : pas besoin d’aller jusqu’au bout. Un genou à plus de 3/10 ou un ménisque qui bloque : tu arrêtes l’exercice.'
       : '';
     case 'race': return 'Pars plus lent que ton allure marathon. Marche 1 min toutes les 10 à 15 min si besoin. Rien de nouveau le jour J.';
     default: return '';
@@ -463,11 +471,11 @@ function viewMoreFull() {
   <details class="acc" id="renfo"><summary>Renfo</summary><div class="acc-body">
     <p class="muted">Le renfo protège tes genoux plus qu’une sortie de plus. Contenu général, à faire valider par ton kiné.</p>
     <h3>Séance A · lundi midi, salle (20 à 30 min)</h3>
-    <p>Échauffement 5 min : marche rapide ou vélo. Tu fais <b>toutes les séries d’un exercice</b>, puis tu passes au suivant, avec 60 à 90 s de repos entre séries. 2 ou 3 séries selon la séance du jour, 1 seule en version légère.</p>
-    ${exoList({ title: '3 séries' }).replace('3 × ', '2 à 3 × ')}
+    <p>Échauffement 5 min : marche rapide ou vélo. Tu fais <b>toutes les séries d’un exercice</b>, puis tu passes au suivant, avec 90 s de repos entre séries. 2 ou 3 séries selon la séance du jour, 1 seule en version légère.</p>
+    ${exoList({ title: '3 séries' }).replace(/3 × /g, '2 à 3 × ')}
     <p><b>Pas jusqu’à l’épuisement :</b> arrête chaque série quand tu sentirais que tu pourrais encore faire 2 répétitions propres. Si le genou fait mal (plus de 3 sur 10) ou si le ménisque se bloque, tu arrêtes l’exercice.</p>
     <h3>Séance B · vendredi soir, 10 min après la course</h3>
-    <p>Pont fessier 2 × 12, marche latérale avec élastique 2 × 12 pas de chaque côté, mollets 2 × 15, planche 2 × 30 s.</p>
+    <p>Hip thrust à la machine 2 × 12, marche latérale avec élastique 2 × 12 pas de chaque côté, mollets 2 × 15, planche 2 × 30 s.</p>
     <h3>À éviter, ou à valider avec le kiné</h3>
     <ul><li>Accroupissements profonds</li><li>Extension de jambe en charge</li><li>Fentes avec rotation</li><li>Sauts</li></ul>
   </div></details>
