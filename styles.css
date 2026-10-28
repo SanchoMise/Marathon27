@@ -315,3 +315,55 @@ span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 /* Points de semaine : séance passée */
 .wprog .dots i.passed { background: var(--orange); }
 @media (prefers-color-scheme: dark) { .wprog .dots i.passed { background: var(--pink); } }
+
+/* ---------- Renfo : récap sur la carte + liste à cocher + chrono ---------- */
+.rx-sum { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 18px; background: var(--chip); color: var(--on); }
+.rx-sum b { font-weight: 800; }
+.rx-sum span { display: block; font-size: 14px; opacity: .9; }
+.rx-prog { font-size: 28px; font-stretch: 75%; font-weight: 800; }
+.hero .btn.block { margin-top: 10px; }
+.sheet.rx-panel { padding-bottom: 260px; }
+.rx { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rx-item { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: start; padding: 14px; border-radius: 22px; background: var(--surface); }
+.rx-item.is-full { opacity: .62; }
+.rx-item.is-full .rx-main b { text-decoration: line-through; text-decoration-thickness: 2px; }
+.rx-check { width: 52px; height: 52px; border-radius: 50%; border: 3px solid var(--ink); background: transparent; color: transparent; display: grid; place-items: center; padding: 0; }
+.rx-check[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.rx-check svg { width: 26px; height: 26px; }
+.rx-main b { display: block; font-size: 19px; font-weight: 800; line-height: 1.15; }
+.rx-main span { display: block; margin-top: 2px; font-size: 14px; color: var(--ink-soft); }
+.rx-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.rx-sets { display: flex; gap: 8px; }
+.rx-set { width: 48px; height: 48px; border-radius: 14px; border: 2px solid var(--line); background: transparent; color: var(--ink); font-weight: 800; font-size: 18px; }
+.rx-set[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
+@media (prefers-color-scheme: dark) { .rx-set[aria-pressed="true"] { background: var(--peach); border-color: var(--peach); color: var(--navy); } }
+.rx-chip { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--line); background: transparent; color: var(--ink); font-weight: 800; font-size: 15px; }
+.tdock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); width: min(calc(100% - 24px), 496px); z-index: 60; padding: 12px 14px; border-radius: 26px; background: var(--nav-bg); color: var(--nav-ink); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.tdock-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tm { font-size: 54px; font-weight: 800; font-stretch: 72%; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.tdock.run .tm { color: var(--peach); }
+.tdock.end .tm { color: var(--orange); }
+.tdock-btns { display: flex; gap: 8px; }
+.tdock .btn { background: var(--peach); color: var(--navy); }
+.tdock .btn.line { background: transparent; color: var(--nav-ink); border-color: rgba(255,255,255,.35); }
+.tdock-pre { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.tdock .rx-chip { color: var(--nav-ink); border-color: rgba(255,255,255,.3); min-height: 40px; padding: 0 12px; }
+.tdock .auto { margin-left: auto; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.tdock .auto input { width: 22px; height: 22px; accent-color: var(--peach); }
+
+/* ---------- Vendredi : course / renfo ---------- */
+.parts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.part { min-height: 56px; border-radius: 18px; border: 3px solid var(--line); background: transparent; color: var(--ink); font-weight: 800; font-size: 18px; opacity: .6; }
+.part[aria-pressed="true"] { opacity: 1; border-color: var(--ink); background: var(--surface); }
+.part[aria-pressed="true"]::before { content: '✓ '; }
+#stats-box[hidden] { display: none; }
+
+/* ---------- Rappel de séances manquées, bilan ---------- */
+.note.miss { border: 2px solid var(--orange); border-style: solid; }
+.bilan { margin: 0 0 14px; padding: 18px 18px 16px; border-radius: 26px; background: var(--surface); border: 3px solid var(--blue); }
+.bilan.soft { border-color: var(--orange); }
+.bilan.care { border-color: var(--alert); }
+.bilan-facts { font-size: 20px; font-weight: 800; font-stretch: 85%; line-height: 1.15; margin: 4px 0 8px; }
+.bilan-text { margin-top: 6px; }
+.bilan-prop { margin: 12px 0 10px; padding: 12px 14px; border-radius: 16px; background: var(--bg); }
+.tagpill.adj { background: var(--pink); }

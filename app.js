@@ -49,14 +49,16 @@ const fmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(
 
 /* ---------- Données et état ---------- */
 let PLAN, SESSIONS, WEEKS;
-let state = { done: {}, skipped: {}, u: {} }; // u : date de dernière modification par séance (pour la synchro)
+// u : date de dernière modification par séance (synchro) · ex : séries de renfo cochées · seen : bilans vus · adj : plafonds appliqués après un bilan
+const emptyState = () => ({ done: {}, skipped: {}, u: {}, ex: {}, seen: {}, adj: {} });
+let state = emptyState();
 let TODAY = todayStr();
 
 function load() {
   if (READONLY) return;
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) state = normalize(JSON.parse(raw));
+    if (raw) { state = normalize(JSON.parse(raw)); rebuild(); }
   } catch (e) { /* stockage indisponible : on continue en mémoire */ }
 }
 function save() {
@@ -69,7 +71,7 @@ function normalize(o) {
   const ids = new Set(SESSIONS ? SESSIONS.map(s => s.id) : []);
   const r = { done: {}, skipped: {}, u: {} };
   for (const [id, v] of Object.entries((o && o.done) || {})) {
-    if (!ids.size || ids.has(id)) { r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null }; const st = cleanStats(v.stats); if (st) r.done[id].stats = st; if (typeof v.where === 'string' && v.where.trim() && r.done[id].knee && r.done[id].knee !== 'ras') r.done[id].where = v.where.trim().slice(0, 80); }
+    if (!ids.size || ids.has(id)) { r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null }; const st = cleanStats(v.stats); if (st) r.done[id].stats = st; if (v.parts && typeof v.parts === 'object' && (v.parts.run === false || v.parts.renfo === false)) r.done[id].parts = { run: v.parts.run !== false, renfo: v.parts.renfo !== false }; if (typeof v.where === 'string' && v.where.trim() && r.done[id].knee && r.done[id].knee !== 'ras') r.done[id].where = v.where.trim().slice(0, 80); }
   }
   for (const id of Object.keys((o && o.skipped) || {})) if (!ids.size || ids.has(id)) r.skipped[id] = true;
   const u = (o && o.u) || {};
@@ -77,6 +79,17 @@ function normalize(o) {
     if (ids.size && !ids.has(id)) continue;
     const t = r.done[id] && Date.parse(r.done[id].t);
     r.u[id] = Number(u[id]) || (Number.isFinite(t) ? t : 0);
+  }
+  r.ex = {};
+  for (const [id, arr] of Object.entries((o && o.ex) || {})) if ((!ids.size || ids.has(id)) && Array.isArray(arr)) r.ex[id] = arr.slice(0, 12).map(n => Math.max(0, Math.min(9, Math.floor(Number(n)) || 0)));
+  r.seen = {};
+  for (const n of Object.keys((o && o.seen) || {})) if (/^\d{1,2}$/.test(n)) r.seen[n] = true;
+  r.adj = {};
+  for (const [n, v] of Object.entries((o && o.adj) || {})) {
+    if (!/^\d{1,2}$/.test(n) || !v) continue;
+    const m = {};
+    for (const d of ['mer', 'ven', 'dim']) { const x = Number(v.m && v.m[d]); if (Number.isFinite(x) && x >= 5 && x <= 400) m[d] = Math.round(x); }
+    r.adj[n] = { t: Number(v.t) || 0, m };
   }
   return r;
 }
@@ -104,12 +117,17 @@ const isRun = s => ['run_easy', 'run_quality', 'run_long', 'race'].includes(s.ty
 
 // Fusion : pour chaque séance, la modification la plus récente gagne (une annulation compte comme une modification).
 function mergeStates(a, b) {
-  const r = { done: {}, skipped: {}, u: {} };
+  const r = { done: {}, skipped: {}, u: {}, ex: {}, seen: { ...a.seen, ...b.seen }, adj: {} };
+  for (const n of new Set([...Object.keys(a.adj || {}), ...Object.keys(b.adj || {})])) {
+    const x = (a.adj || {})[n], y = (b.adj || {})[n];
+    r.adj[n] = x && (!y || x.t >= y.t) ? x : y;
+  }
   for (const id of new Set([...Object.keys(a.u), ...Object.keys(b.u)])) {
     const src = (a.u[id] || 0) >= (b.u[id] || 0) ? a : b;
     r.u[id] = src.u[id] || 0;
     if (src.done[id]) r.done[id] = { ...src.done[id] };
     else if (src.skipped[id]) r.skipped[id] = true;
+    if (src.ex && src.ex[id]) r.ex[id] = [...src.ex[id]];
   }
   return r;
 }
@@ -216,7 +234,7 @@ const exosFor = s => {
     alt,
     ['Hip thrust à la machine', '12 répétitions, tu augmentes la charge petit à petit'],
     ['Mollets debout', '15 répétitions'],
-    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté'],
+    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté', [30, 20]],
   ];
 };
 const setsOf = s => (s.title.match(/(\d) séries/) || [])[1] ? +s.title.match(/(\d) séries/)[1] : 1; // « léger » : 1 série
@@ -234,7 +252,7 @@ function tipOf(s) {
       ? 'Allure facile. Marche 1 min toutes les 10 à 15 min : c’est prévu, ça fait partie du plan. Chemin ou terre si possible.'
       : 'Allure facile, sur chemin ou terre si possible. Tu t’arrêtes là où le plan s’arrête.';
     case 'renfo': return s.day === 'lun'
-      ? 'À la salle. Toutes les séries d’un exercice, puis tu passes au suivant, avec 90 s de repos entre séries. Arrête chaque série quand tu sentirais pouvoir en faire encore 2 : pas besoin d’aller jusqu’au bout. Un genou à plus de 3/10 ou un ménisque qui bloque : tu arrêtes l’exercice.'
+      ? 'À la salle. Garde 2 répétitions en réserve : pas besoin d’aller jusqu’au bout. Un genou à plus de 3/10 ou un ménisque qui bloque : tu arrêtes l’exercice.'
       : '';
     case 'race': return 'Pars plus lent que ton allure marathon. Marche 1 min toutes les 10 à 15 min si besoin. Rien de nouveau le jour J.';
     default: return '';
@@ -247,6 +265,7 @@ const kneeTag = id => {
   const k = state.done[id] && state.done[id].knee;
   return k ? `<span class="knee-tag ${k}" role="img" aria-label="Genoux : ${KNEE[k]}">${KNEE[k]}</span>` : '';
 };
+const partsLine = id => { const p = state.done[id] && state.done[id].parts; return p && !(p.run && p.renfo) ? `<span class="stats-line">${p.run ? 'Course seule' : 'Renfo seul'}</span>` : ''; };
 const rowText = (s, skipped) => `<span class="when">${fmtDate(s.date)} · ${s.place}${skipped ? ' · passée' : ''}</span><span class="what">${esc(titleOf(s))}</span>`;
 function sessionRow(s, opts = {}) {
   const t = TYPES[s.type];
@@ -260,9 +279,9 @@ function sessionRow(s, opts = {}) {
   const note = READONLY && d.stats && d.stats.note ? `<span class="stats-line">« ${esc(d.stats.note)} »</span>` : '';
   let main;
   if (done && READONLY) {
-    main = `<div>${rowText(s, skipped)}${statsLine(s.id) ? `<span class="stats-line">${esc(statsLine(s.id))}</span>` : ''}${where}${note}</div>`;
+    main = `<div>${rowText(s, skipped)}${statsLine(s.id) ? `<span class="stats-line">${esc(statsLine(s.id))}</span>` : ''}${partsLine(s.id)}${where}${note}</div>`;
   } else if (done) {
-    main = `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span>${where}</button>`;
+    main = `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) && !(d.parts && d.parts.run === false) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span>${partsLine(s.id)}${where}</button>`;
   } else {
     main = `<div>${rowText(s, skipped)}</div>`;
   }
@@ -298,7 +317,6 @@ function viewToday() {
   const nextUp = upcoming.filter(s => !hero || s.id !== hero.id).slice(0, 2);
 
   const alertK = kneeAlert();
-  const skippedThisWeek = cw.sessions.filter(s => state.skipped[s.id]).length;
 
   let html = `<header class="top">
     <span class="num display" aria-hidden="true">${days}</span>
@@ -306,9 +324,8 @@ function viewToday() {
   </header>`;
 
   if (alertK) html += alertBox(alertK);
-  if (skippedThisWeek >= 2) {
-    html += `<div class="note"><b>Deux séances passées cette semaine.</b> Pas de souci : tu reprends la semaine précédente, sans rien rattraper.</div>`;
-  }
+  html += missReminder();
+  html += bilanCard();
 
   if (doneToday) {
     html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Séance du jour</h2></div><div class="list">${sessionRow(doneToday)}</div>${cheerCard(cheerFor(doneToday), true)}`;
@@ -364,7 +381,7 @@ function heroCard(s, isToday, afterDone) {
     <p class="extra"><span class="chip">${s.place}</span>${s.extra ? ` ${esc(s.extra)}` : ''}</p>
     ${reduced ? '<p class="tip"><b>Ramenée au niveau de la semaine 22</b>, comme prévu au point de décision.</p>' : ''}
     ${tipOf(s) ? `<p class="tip">${esc(tipOf(s))}</p>` : ''}
-    ${s.type === 'renfo' && s.day === 'lun' ? exoList(s) : ''}
+    ${renfoSummary(s)}
     <div class="cta-row">
       ${READONLY ? '' : done
         ? `<span class="done-badge">${I.check.replace('<svg', '<svg width="28" height="28"')} Validée</span>${kneeTag(s.id)}<button class="btn ghost small" data-a="toggle" data-id="${s.id}">Annuler</button>`
@@ -390,6 +407,7 @@ function contextNotes(cw) {
   let h = '';
   if (cw.n <= 8) h += `<div class="note"><b>Avant la semaine 9 (30 nov.).</b> Fais voir ton genou qui coince à l’accroupissement à un kiné ou au chirurgien, avant que les sorties dépassent 1 h.</div>`;
   if (cw.n === 21 || cw.n === 22) h += `<div class="note"><b>Point de décision.</b> Si un genou a protesté cette semaine ou la précédente, la sortie de la semaine 23 passe de ${fmtDur(180)} à ${fmtDur(WEEKS[21].sessions.find(x => x.day === 'dim').minutes)}.</div>`;
+  if (cw.adjusted) h += `<div class="note"><b>Semaine ajustée.</b> Les durées ont été plafonnées après ton dernier bilan.${READONLY ? '' : ` <button class="mini" data-a="adj-cancel" data-n="${cw.n}">Revenir au plan</button>`}</div>`;
   if (cw.allegee) h += `<div class="note"><b>Semaine allégée.</b> On la fait, on ne la saute pas. C’est là que tu absorbes.</div>`;
   return h;
 }
@@ -413,7 +431,7 @@ function viewPlan() {
       const isCur = cw && w.n === cw.n;
       return `<details class="week ${isCur ? 'current' : ''}" ${isCur ? 'open' : ''} id="w${w.n}">
         <summary><span class="wnum display">${w.n}</span>
-          <span class="wmeta">${fmtDate(w.start, { day: 'numeric', month: 'short' })} · ${w.phase}${w.allegee ? '<span class="tagpill">allégée</span>' : ''}${w.tag && !w.allegee ? `<span class="wsub">${esc(w.tag)}</span>` : `<span class="wsub">${w.allegee ? 'On ne la saute pas' : '&nbsp;'}</span>`}</span>
+          <span class="wmeta">${fmtDate(w.start, { day: 'numeric', month: 'short' })} · ${w.phase}${w.allegee ? '<span class="tagpill">allégée</span>' : ''}${w.adjusted ? '<span class="tagpill adj">ajustée</span>' : ''}${w.tag && !w.allegee ? `<span class="wsub">${esc(w.tag)}</span>` : `<span class="wsub">${w.allegee ? 'On ne la saute pas' : '&nbsp;'}</span>`}</span>
           <span class="wprog">${st.done}/${st.total}<span class="dots" aria-hidden="true">${w.sessions.filter(counts).map(x => `<i class="${isDone(x.id) ? 'on' : state.skipped[x.id] ? 'passed' : ''}"></i>`).join('')}</span></span></summary>
         <div class="list">${w.sessions.map(s => sessionRow(s)).join('')}</div></details>`;
     }).join('')}</div>`;
@@ -572,7 +590,7 @@ async function syncNow(quiet) {
     const shareChanged = (share || '') !== shareCode;
     shareCode = share || '';
     const before = JSON.stringify(state);
-    state = mergeStates(state, normalize(remote || {}));
+    state = mergeStates(state, normalize(remote || {})); rebuild();
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignoré */ }
     await api(code, { action: 'put', state });
     syncMsg('Synchronisé à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + '.');
@@ -587,7 +605,7 @@ let sharedAt = null, sharedError = '';
 async function refreshShared() {
   try {
     const { state: remote } = await api(null, { action: 'read', share: SHARE });
-    state = normalize(remote || {});
+    state = normalize(remote || {}); rebuild();
     sharedAt = new Date(); sharedError = '';
   } catch (e) {
     sharedError = e.status === 404 ? 'Ce lien n’est plus actif.' : 'Impossible de charger la progression pour l’instant.';
@@ -610,12 +628,15 @@ function expectedStats(s) {
   return { km: Math.round(km * 10) / 10, min: m };
 }
 let sheetKnee = null;
+let sheetParts = { run: true, renfo: true };
 function openKnee(id, fresh) {
   const s = SESSIONS.find(x => x.id === id);
   const d = state.done[id] || {};
   const prefill = !d.stats && isRun(s) ? expectedStats(s) : null;
   const st = d.stats || prefill || {};
   sheetKnee = d.knee || null;
+  sheetParts = d.parts ? { run: d.parts.run !== false, renfo: d.parts.renfo !== false } : { run: true, renfo: true };
+  const pb = (k, label) => `<button type="button" class="part" data-a="pick-part" data-k="${k}" aria-pressed="${sheetParts[k]}">${label}</button>`;
   const whereOn = k => k === 'gene' || k === 'douleur';
   const kb = (k, label) => `<button type="button" class="opt ${k}" data-a="pick-knee" data-k="${k}" aria-pressed="${sheetKnee === k}">${label}</button>`;
   const field = (name, label, val, mode, ph) => `<label class="fld"><span>${label}</span><input name="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${val == null ? '' : esc(String(val).replace('.', name === 'pace' ? '.' : ','))}"></label>`;
@@ -623,25 +644,26 @@ function openKnee(id, fresh) {
   $('#sheet-root').innerHTML = `<div class="scrim ${full ? 'full' : ''}" data-a="close-sheet"><form class="sheet ${full ? 'full' : ''}" id="sheet-form" data-id="${id}" role="dialog" aria-modal="true" aria-labelledby="sh-t">
     <button type="button" class="x" data-a="close-sheet" aria-label="Fermer">✕</button>
     <h2 id="sh-t">Comment c’était ?</h2><p>${esc(titleOf(s))} · tout est optionnel.</p>
+    ${s.extra ? `<h3 class="sh-h">Ce que tu as fait</h3><div class="parts">${pb('run', 'Course')}${pb('renfo', 'Renfo B')}</div>` : ''}
     <h3 class="sh-h">Tes genoux</h3>
     <div class="knee-opts">${kb('ras', 'RAS')}${kb('gene', 'Gêne')}${kb('douleur', 'Douleur')}</div>
     <div class="where" id="where-box" ${whereOn(sheetKnee) ? '' : 'hidden'}>
       <label class="fld wide"><span>Où ? (précision)</span><input name="where" autocomplete="off" placeholder="genou droit, cheville gauche…" value="${esc(d.where || '')}"></label>
       <div class="chips">${['genou droit', 'genou gauche', 'cheville droite', 'cheville gauche', 'mollet', 'hanche', 'dos'].map(w => `<button type="button" class="chip-btn" data-a="where-chip" data-v="${w}">${w}</button>`).join('')}</div>
     </div>
-    ${isRun(s) ? `<h3 class="sh-h">Tes stats</h3><p class="small muted" style="margin:0 0 8px">${prefill ? 'Pré-rempli avec ce que le plan prévoit : change ce qui diffère.' : 'Recopie ce qui est sur la montre ou le tapis.'}</p>
+    ${isRun(s) ? `<div id="stats-box" ${sheetParts.run ? '' : 'hidden'}><h3 class="sh-h">Tes stats</h3><p class="small muted" style="margin:0 0 8px">${prefill ? 'Pré-rempli avec ce que le plan prévoit : change ce qui diffère.' : 'Recopie ce qui est sur la montre ou le tapis.'}</p>
     <div class="flds">
       ${field('km', 'Distance (km)', st.km, 'decimal', '5,2')}
       ${field('min', 'Durée (min)', st.min, 'decimal', '32')}
       ${field('pace', 'Allure (min/km)', st.pace, 'text', 'auto')}
       ${field('hr', 'FC moyenne', st.hr, 'numeric', '142')}
     </div>
-    <label class="fld wide"><span>Note</span><input name="note" autocomplete="off" placeholder="Sensations, météo, tapis…" value="${esc(st.note || '')}"></label>` : ''}
+    <label class="fld wide"><span>Note</span><input name="note" autocomplete="off" placeholder="Sensations, météo, tapis…" value="${esc(st.note || '')}"></label></div>` : ''}
     <div class="sh-actions"><button type="submit" class="btn block">Enregistrer</button>
     <button type="button" class="btn line block" data-a="close-sheet">${fresh ? 'Passer' : 'Fermer'}</button></div></form></div>`;
   const b = $('#sheet-form .opt'); if (b) b.focus();
 }
-const closeSheet = () => { $('#sheet-root').innerHTML = ''; };
+const closeSheet = () => { rxStop(); $('#sheet-root').innerHTML = ''; };
 
 /* ---------- Export .ics ---------- */
 function buildICS() {
@@ -695,6 +717,40 @@ const actions = {
   'sync-copy': async () => { try { await navigator.clipboard.writeText(getCode()); syncMsg('Code copié.'); } catch (e) { syncMsg('Copie-le à la main.'); } },
   'sync-now': () => syncNow(),
   'sync-off': () => { if (confirm('Déconnecter cet appareil ? Ta progression reste ici, mais ne se synchronise plus.')) { setCode(''); syncMsg(''); render(); } },
+  'rx-open': e => rxOpen(e.dataset.id),
+  'rx-set': e => {
+    const id = rx.id, i = +e.dataset.i, k = +e.dataset.k, r = renfoOf(SESSIONS.find(x => x.id === id));
+    const cur = (state.ex[id] || [])[i] || 0, nv = cur >= k ? k - 1 : k;
+    setEx(id, i, nv);
+    if (nv > cur && rxAuto && !(i === r.exos.length - 1 && nv >= r.sets)) timerStart(r.rest);
+    renderRenfo();
+  },
+  'rx-all': e => {
+    const id = rx.id, i = +e.dataset.i, r = renfoOf(SESSIONS.find(x => x.id === id));
+    setEx(id, i, ((state.ex[id] || [])[i] || 0) >= r.sets ? 0 : r.sets);
+    renderRenfo();
+  },
+  'rx-timer': e => timerStart(+e.dataset.s),
+  'rx-go': () => (timer.running ? timerPause() : timerStart()),
+  'rx-reset': () => timerReset(),
+  'rx-auto': e => { rxAuto = !!e.checked; try { localStorage.setItem('marathon27:rxauto', rxAuto ? '1' : '0'); } catch (err) { /* ignoré */ } },
+  'rx-finish': () => {
+    const id = rx.id, r = renfoOf(SESSIONS.find(x => x.id === id));
+    closeSheet();
+    if (r.closes && !isDone(id)) toggle(id);
+  },
+  'pick-part': e => {
+    sheetParts[e.dataset.k] = !sheetParts[e.dataset.k];
+    document.querySelectorAll('#sheet-form .part').forEach(b => b.setAttribute('aria-pressed', String(sheetParts[b.dataset.k])));
+    const box = $('#stats-box'); if (box) box.hidden = !sheetParts.run;
+  },
+  'bilan-seen': e => { state.seen[e.dataset.n] = true; save(); render(); },
+  'bilan-apply': e => {
+    const w = WEEKS[+e.dataset.n - 1], b = bilanFor(w);
+    if (b.next && Object.keys(b.caps).length) { state.adj[b.next.n] = { t: Date.now(), m: b.caps }; rebuild(); }
+    state.seen[w.n] = true; save(); render();
+  },
+  'adj-cancel': e => { state.adj[e.dataset.n] = { t: Date.now(), m: {} }; rebuild(); save(); render(); },
   toggle: e => toggle(e.dataset.id),
   unskip: e => { delete state.skipped[e.dataset.id]; touch(e.dataset.id); save(); render(); },
   skip: e => { state.skipped[e.dataset.id] = true; touch(e.dataset.id); save(); render(); },
@@ -722,10 +778,10 @@ const actions = {
     try {
       const data = JSON.parse($('#io').value);
       if (!data || typeof data.done !== 'object') throw new Error();
-      state = normalize(data); SESSIONS.forEach(x => touch(x.id)); save(); msg(`Importé : ${Object.keys(state.done).length} séances validées.`);
+      state = normalize(data); rebuild(); SESSIONS.forEach(x => touch(x.id)); save(); msg(`Importé : ${Object.keys(state.done).length} séances validées.`);
     } catch (e) { msg('Ce texte n’est pas une sauvegarde valide.'); }
   },
-  reset: () => { if (confirm('Effacer toute la progression de cet appareil ?')) { state = { done: {}, skipped: {}, u: {} }; SESSIONS.forEach(x => touch(x.id)); save(); msg('Progression effacée.'); } },
+  reset: () => { if (confirm('Effacer toute la progression de cet appareil ?')) { state = emptyState(); rebuild(); SESSIONS.forEach(x => touch(x.id)); save(); msg('Progression effacée.'); } },
 };
 const msg = t => { const m = $('#io-msg'); if (m) m.textContent = t; };
 
@@ -739,13 +795,21 @@ document.addEventListener('submit', ev => {
   const f = ev.target.closest('#sheet-form'); if (!f) return;
   ev.preventDefault();
   const id = f.dataset.id, d = state.done[id]; if (!d) return closeSheet();
+  const sess = SESSIONS.find(x => x.id === id);
+  if (sess && sess.extra) {
+    if (!sheetParts.run && !sheetParts.renfo) {
+      if (confirm('Ni la course ni le renfo ne sont cochés : on marque la séance comme passée ?')) { delete state.done[id]; state.skipped[id] = true; touch(id); save(); closeSheet(); render(); }
+      return;
+    }
+    if (sheetParts.run && sheetParts.renfo) delete d.parts; else d.parts = { run: sheetParts.run, renfo: sheetParts.renfo };
+  }
   const v = n => (f.elements[n] ? f.elements[n].value : '');
   const pace = String(v('pace')).trim().replace(',', ':').replace('.', ':');
   const stats = cleanStats({ km: num(v('km')), min: num(v('min')), hr: num(v('hr')), pace, note: v('note') });
   d.knee = sheetKnee;
   const where = (v('where') || '').trim().slice(0, 80);
   if (where && (sheetKnee === 'gene' || sheetKnee === 'douleur')) d.where = where; else delete d.where;
-  if (stats) d.stats = stats; else delete d.stats;
+  if (stats && (!sess || !sess.extra || sheetParts.run)) d.stats = stats; else delete d.stats;
   touch(id); save(); closeSheet(); render();
 });
 // Clavier ouvert : on amène le champ au centre de l'écran.
@@ -756,6 +820,239 @@ document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') closeSheet();
   if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('.bar-hit')) { ev.preventDefault(); actions.pick(ev.target); }
 });
+
+/* ---------- Renfo : exercices à cocher + chrono ---------- */
+const EXOS_B = [
+  ['Hip thrust à la machine', '12 répétitions, charge qui monte petit à petit'],
+  ['Marche latérale avec élastique', '12 pas de chaque côté'],
+  ['Mollets debout', '15 répétitions'],
+  ['Planche', '30 s', [30]],
+];
+function renfoOf(s) {
+  if (s.type === 'renfo' && s.day === 'lun') return { label: 'Renfo A', sets: setsOf(s), rest: 90, exos: exosFor(s), finish: 'Terminer la séance', closes: true };
+  if (s.extra) return { label: 'Renfo B', sets: 2, rest: 60, exos: EXOS_B, finish: 'Renfo terminé', closes: false };
+  return null;
+}
+const exCounts = (id, r) => r.exos.map((_, i) => Math.min(r.sets, (state.ex[id] && state.ex[id][i]) || 0));
+const exDoneCount = (s, r) => exCounts(s.id, r).filter(c => c >= r.sets).length;
+function setEx(id, i, v) {
+  const a = (state.ex[id] || []).slice();
+  while (a.length <= i) a.push(0);
+  a[i] = v;
+  if (a.every(x => !x)) delete state.ex[id]; else state.ex[id] = a;
+  touch(id); save();
+}
+function renfoSummary(s) {
+  const r = renfoOf(s); if (!r || READONLY) return '';
+  const n = r.exos.length, d = exDoneCount(s, r);
+  return `<div class="rx-sum"><div><b>${r.label}</b><span>${n} exercices · ${r.sets} série${r.sets > 1 ? 's' : ''} · repos ${r.rest} s</span></div><b class="rx-prog">${d}/${n}</b></div>
+    <button class="btn ghost block" data-a="rx-open" data-id="${s.id}">${d ? 'Continuer' : 'Ouvrir'} la liste d’exercices</button>`;
+}
+
+let rx = null; // séance de renfo ouverte
+const timer = { total: 90, left: 90, end: 0, running: false, iv: null };
+let rxAuto = true;
+try { rxAuto = localStorage.getItem('marathon27:rxauto') !== '0'; } catch (e) { /* ignoré */ }
+let audioCtx = null, wakeLock = null;
+
+function beep() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25, 0.5].forEach(d => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + d;
+      o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.start(t); o.stop(t + 0.2);
+    });
+  } catch (e) { /* ignoré */ }
+  try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) { /* ignoré */ }
+}
+const fmtClock = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+function paintTimer() {
+  const el = $('#tm'); if (el) el.textContent = fmtClock(timer.left);
+  const dock = $('.tdock');
+  if (dock) { dock.classList.toggle('run', timer.running); dock.classList.toggle('end', !timer.running && timer.left === 0); }
+  const b = $('#tm-go'); if (b) b.textContent = timer.running ? 'Pause' : timer.left === 0 || timer.left === timer.total ? 'Démarrer' : 'Reprendre';
+}
+function tickTimer() {
+  if (timer.running) {
+    timer.left = Math.max(0, Math.ceil((timer.end - Date.now()) / 1000));
+    if (timer.left === 0) { timer.running = false; clearInterval(timer.iv); beep(); }
+  }
+  paintTimer();
+}
+function timerStart(sec) {
+  try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) { /* ignoré */ }
+  if (sec) { timer.total = sec; timer.left = sec; }
+  if (timer.left <= 0) timer.left = timer.total;
+  timer.end = Date.now() + timer.left * 1000; timer.running = true;
+  clearInterval(timer.iv); timer.iv = setInterval(tickTimer, 250); tickTimer();
+}
+function timerPause() { timer.running = false; clearInterval(timer.iv); paintTimer(); }
+function timerReset() { timerPause(); timer.left = timer.total; paintTimer(); }
+async function wakeOn() { try { if (navigator.wakeLock && !wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* ignoré */ } }
+function rxStop() {
+  if (!rx) return;
+  rx = null; timerPause();
+  try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignoré */ }
+  wakeLock = null;
+}
+function rxOpen(id) {
+  const s = SESSIONS.find(x => x.id === id), r = s && renfoOf(s); if (!r) return;
+  rx = { id }; timerPause(); timer.total = timer.left = r.rest;
+  renderRenfo(); wakeOn();
+}
+function renderRenfo() {
+  if (!rx) return;
+  const s = SESSIONS.find(x => x.id === rx.id), r = renfoOf(s), cnt = exCounts(s.id, r), n = r.exos.length;
+  const doneN = r.exos.filter((_, i) => cnt[i] >= r.sets).length;
+  const old = $('.rx-panel'), top = old ? old.scrollTop : 0;
+  const items = r.exos.map(([name, det, timers], i) => {
+    const full = cnt[i] >= r.sets;
+    const sets = Array.from({ length: r.sets }, (_, k) => `<button type="button" class="rx-set" data-a="rx-set" data-i="${i}" data-k="${k + 1}" aria-pressed="${cnt[i] > k}" aria-label="Série ${k + 1} sur ${r.sets} : ${esc(name)}">${k + 1}</button>`).join('');
+    const chips = (timers || []).map(t => `<button type="button" class="rx-chip" data-a="rx-timer" data-s="${t}">⏱ ${t} s</button>`).join('');
+    return `<li class="rx-item ${full ? 'is-full' : ''}"><button type="button" class="rx-check" data-a="rx-all" data-i="${i}" aria-pressed="${full}" aria-label="${full ? 'Décocher' : 'Cocher'} : ${esc(name)}">${I.check}</button>
+      <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${chips}</div></div></li>`;
+  }).join('');
+  $('#sheet-root').innerHTML = `<div class="scrim full" data-a="close-sheet"><div class="sheet full rx-panel" role="dialog" aria-modal="true" aria-labelledby="rx-t">
+    <button type="button" class="x" data-a="close-sheet" aria-label="Fermer">✕</button>
+    <h2 id="rx-t">${r.label}</h2>
+    <p>${fmtDate(s.date)} · ${r.sets} série${r.sets > 1 ? 's' : ''} par exercice · repos ${r.rest} s</p>
+    <div class="bar" style="margin-top:14px"><i style="width:${Math.round((doneN / n) * 100)}%"></i></div>
+    <p class="small muted" style="margin:6px 0 14px">${doneN} exercice${doneN > 1 ? 's' : ''} sur ${n} · touche une série pour la valider${rxAuto ? ', le chrono part tout seul' : ''}</p>
+    <ol class="rx">${items}</ol>
+    <div class="sh-actions"><button type="button" class="btn block" data-a="rx-finish">${r.finish}</button></div>
+    </div>
+    <div class="tdock"><div class="tdock-top"><span id="tm" class="tm">${fmtClock(timer.left)}</span>
+      <div class="tdock-btns"><button type="button" class="btn small" id="tm-go" data-a="rx-go">Démarrer</button><button type="button" class="btn small line" data-a="rx-reset">Zéro</button></div></div>
+      <div class="tdock-pre">${[20, 30, 60, 90, 120].map(t => `<button type="button" class="rx-chip" data-a="rx-timer" data-s="${t}">${t < 120 ? t + ' s' : '2 min'}</button>`).join('')}
+        <label class="auto"><input type="checkbox" data-a="rx-auto" ${rxAuto ? 'checked' : ''}> Chrono auto</label></div></div>
+  </div>`;
+  const p = $('.rx-panel'); if (p) p.scrollTop = top;
+  paintTimer();
+}
+
+/* ---------- Séances manquées : rappel ---------- */
+function missStreak() {
+  const past = SESSIONS.filter(counts).filter(s => s.date < TODAY || (s.date === TODAY && state.skipped[s.id])).sort((p, q) => p.date.localeCompare(q.date));
+  let n = 0;
+  for (let i = past.length - 1; i >= 0; i--) { if (isDone(past[i].id)) break; n++; }
+  return n;
+}
+function missReminder() {
+  if (READONLY) return '';
+  const n = missStreak(); if (n < 2) return '';
+  let title, body;
+  if (n >= 4) {
+    title = `${n} séances de suite sans validation.`;
+    body = 'Reprends en douceur : la semaine précédente, et plus court si besoin. Si ça vient d’une gêne, de fatigue ou d’un manque de temps qui dure, on peut ajuster le plan. Parles-en à ta kiné si c’est lié à un genou.';
+  } else if (n === 3) {
+    title = '3 séances de suite sans validation.';
+    body = 'Essaie de faire la prochaine, même en version raccourcie, par exemple la moitié de la durée. Mieux vaut reprendre doucement que pas du tout. Si une gêne t’a freiné, note-la et parles-en à ta kiné.';
+  } else {
+    title = '2 séances de suite sans validation.';
+    body = 'Ça arrive. Si tu les as faites, coche-les. Sinon, on ne rattrape rien : vise simplement la prochaine.';
+  }
+  return `<div class="note miss" role="status"><b>${title}</b> ${body}</div>`;
+}
+
+/* ---------- Bilan de la semaine et ajustement ---------- */
+const DAY_SHORT = { mer: 'mer.', ven: 'ven.', dim: 'dim.' };
+function lastDoneLong(upTo) {
+  for (let i = upTo - 1; i >= 0; i--) {
+    const s = WEEKS[i].sessions.find(x => x.type === 'run_long' && isDone(x.id));
+    if (s && !(state.done[s.id].parts && state.done[s.id].parts.run === false)) return s.minutes;
+  }
+  return null;
+}
+function bilanFor(w) {
+  const list = w.sessions.filter(counts);
+  const doneL = list.filter(s => isDone(s.id));
+  const total = list.length, done = doneL.length;
+  const partial = doneL.filter(s => { const p = state.done[s.id].parts; return p && !(p.run && p.renfo); }).length;
+  const km = doneL.reduce((a, s) => a + ((state.done[s.id].stats || {}).km || 0), 0);
+  const knee = { ras: 0, gene: 0, douleur: 0 };
+  doneL.forEach(s => { const k = state.done[s.id].knee; if (k) knee[k]++; });
+  const wheres = [...new Set(doneL.map(s => state.done[s.id].where).filter(Boolean))];
+  const next = WEEKS[w.n]; // semaine suivante (undefined après la dernière)
+  const lines = []; let tone = 'ok';
+  let reduce = false;
+  if (knee.douleur) { tone = 'care'; reduce = true; lines.push('Une douleur est notée cette semaine. Lève le pied : on n’augmente pas la sortie longue, et parles-en à ta kiné avant de reprendre le rythme prévu.'); }
+  else if (knee.gene >= 2) { tone = 'care'; reduce = true; lines.push('Plusieurs gênes cette semaine. On n’augmente pas la sortie longue et on surveille. Si ça dure, parles-en à ta kiné.'); }
+  else if (knee.gene === 1) lines.push('Une gêne notée : continue comme prévu en restant attentif. Si elle revient, ne rallonge pas la sortie longue.');
+  if (done <= 2 && total >= 3) {
+    reduce = true; if (tone === 'ok') tone = 'soft';
+    lines.push(done === 2 ? 'Semaine à moitié faite. La règle du plan : on reprend la semaine précédente, sans rien rattraper.' : 'Semaine compliquée, ça arrive. On reprend la semaine précédente, tranquillement, sans rien rattraper.');
+  } else if (!knee.douleur && knee.gene < 2) {
+    lines.push(done === total ? 'Semaine complète, belle régularité. On continue comme prévu.' : 'Belle régularité. On continue comme prévu.');
+  }
+  // proposition pour la semaine suivante : on ne fait jamais monter, on plafonne
+  const caps = {}; let why = '';
+  if (next && next.n <= 25) {
+    const lastLong = lastDoneLong(w.n);
+    if (reduce) {
+      const ref = WEEKS.slice(0, w.n - 1).reverse().find(x => !x.allegee) || w;
+      why = 'reprise de la semaine ' + ref.n;
+      for (const d of ['mer', 'ven', 'dim']) {
+        const ns = next.sessions.find(x => x.day === d), rs = ref.sessions.find(x => x.day === d);
+        const ok = t => t && (t.type === 'run_easy' || t.type === 'run_long') && t.minutes;
+        if (ok(ns) && ok(rs) && rs.minutes < ns.minutes) caps[d] = rs.minutes;
+      }
+    }
+    const nl = next.sessions.find(x => x.type === 'run_long');
+    if (nl && lastLong && nl.minutes > Math.round(lastLong * 1.12)) {
+      caps.dim = Math.min(caps.dim == null ? Infinity : caps.dim, Math.round(lastLong * 1.1));
+      if (!why) why = 'la sortie longue prévue dépasse de plus de 12 % ta dernière sortie longue faite (' + fmtDur(lastLong) + ')';
+    }
+  }
+  return { total, done, partial, km, knee, wheres, lines, tone, caps, why, next };
+}
+function pendingBilan() {
+  for (let i = WEEKS.length - 2; i >= 0; i--) {
+    const w = WEEKS[i];
+    if (addDays(w.start, 6) < TODAY) return state.seen[w.n] ? null : w;
+  }
+  return null;
+}
+function bilanCard() {
+  if (READONLY) return '';
+  const w = pendingBilan(); if (!w) return '';
+  const b = bilanFor(w);
+  const planned = d => { const orig = BASE_WEEKS[b.next.n - 1].sessions.find(x => x.day === d); return orig ? orig.minutes : null; };
+  const capKeys = Object.keys(b.caps);
+  const already = b.next && state.adj[b.next.n] && capKeys.every(d => state.adj[b.next.n].m[d] === b.caps[d]);
+  const facts = [`${b.done} séance${b.done > 1 ? 's' : ''} sur ${b.total}`, b.partial ? `dont ${b.partial} en partie` : '', b.km ? `${fmtKm(b.km)} km saisis` : '',
+    b.knee.douleur ? 'douleur notée' : b.knee.gene ? `gêne notée${b.wheres.length ? ' (' + b.wheres.join(', ') + ')' : ''}` : b.knee.ras ? 'genoux : RAS' : ''].filter(Boolean);
+  const proposal = capKeys.length && !already
+    ? `<p class="bilan-prop"><b>Proposition pour la semaine ${b.next.n} :</b> ${capKeys.map(d => `${DAY_SHORT[d]} ${fmtDur(b.caps[d])} (prévu : ${fmtDur(planned(d))})`).join(' · ')}.<br><span class="muted small">Raison : ${esc(b.why)}. On ne fait que baisser, la semaine d’après reprend le plan.</span></p>
+       <div class="btns"><button class="btn small" data-a="bilan-apply" data-n="${w.n}">Appliquer</button><button class="btn small line" data-a="bilan-seen" data-n="${w.n}">Garder le plan</button></div>`
+    : `<div class="btns"><button class="btn small" data-a="bilan-seen" data-n="${w.n}">Compris</button></div>`;
+  return `<section class="bilan ${b.tone}" aria-label="Bilan de la semaine ${w.n}">
+    <p class="eyebrow">Bilan · semaine ${w.n} (${fmtDate(w.start, { day: 'numeric', month: 'short' })} au ${fmtDate(addDays(w.start, 6), { day: 'numeric', month: 'short' })})</p>
+    <p class="bilan-facts">${facts.map(esc).join(' · ')}</p>
+    ${b.lines.map(l => `<p class="bilan-text">${esc(l)}</p>`).join('')}
+    ${proposal}
+    <p class="small muted" style="margin-top:10px">Ces conseils sont des repères, pas un avis médical.</p>
+  </section>`;
+}
+
+// Plan affiché = plan de base + plafonds appliqués après un bilan (jamais plus long que prévu)
+let BASE_WEEKS;
+function rebuild() {
+  WEEKS = BASE_WEEKS.map(w => {
+    const a = state.adj && state.adj[w.n];
+    if (!a || !Object.keys(a.m).length) return w;
+    let changed = false;
+    const sessions = w.sessions.map(s => {
+      const cap = a.m[s.day];
+      if (!cap || !(s.type === 'run_easy' || s.type === 'run_long') || !s.minutes || cap >= s.minutes) return s;
+      changed = true;
+      return { ...s, minutes: cap, title: s.type === 'run_long' ? `Sortie longue ${fmtDur(cap)}` : `${cap} min facile`, adjusted: true };
+    });
+    return changed ? { ...w, sessions, adjusted: true } : w;
+  });
+  SESSIONS = WEEKS.flatMap(w => w.sessions);
+}
 
 /* ---------- Routeur ---------- */
 const VIEWS = { today: viewToday, plan: viewPlan, profile: viewProfile, more: viewMore };
@@ -778,7 +1075,8 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
 (async function init() {
   try {
     PLAN = await (await fetch('/plan.json')).json();
-    WEEKS = PLAN.weeks;
+    BASE_WEEKS = PLAN.weeks;
+    WEEKS = BASE_WEEKS;
     SESSIONS = WEEKS.flatMap(w => w.sessions);
     load();
     if (READONLY) { const m = document.querySelector('link[rel=manifest]'); if (m) m.remove(); } // pas d'installation de la vue partagée comme app
