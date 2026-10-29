@@ -322,7 +322,7 @@ span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 .rx-sum span { display: block; font-size: 14px; opacity: .9; }
 .rx-prog { font-size: 28px; font-stretch: 75%; font-weight: 800; }
 .hero .btn.block { margin-top: 10px; }
-.sheet.rx-panel { padding-bottom: 260px; }
+.sheet.rx-panel { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
 .rx { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .rx-item { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: start; padding: 14px; border-radius: 22px; background: var(--surface); }
 .rx-item.is-full { opacity: .62; }
@@ -338,18 +338,19 @@ span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 .rx-set[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
 @media (prefers-color-scheme: dark) { .rx-set[aria-pressed="true"] { background: var(--peach); border-color: var(--peach); color: var(--navy); } }
 .rx-chip { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--line); background: transparent; color: var(--ink); font-weight: 800; font-size: 15px; }
-.tdock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); width: min(calc(100% - 24px), 496px); z-index: 60; padding: 12px 14px; border-radius: 26px; background: var(--nav-bg); color: var(--nav-ink); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
-.tdock-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.tm { font-size: 54px; font-weight: 800; font-stretch: 72%; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
-.tdock.run .tm { color: var(--peach); }
-.tdock.end .tm { color: var(--orange); }
-.tdock-btns { display: flex; gap: 8px; }
-.tdock .btn { background: var(--peach); color: var(--navy); }
-.tdock .btn.line { background: transparent; color: var(--nav-ink); border-color: rgba(255,255,255,.35); }
-.tdock-pre { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
-.tdock .rx-chip { color: var(--nav-ink); border-color: rgba(255,255,255,.3); min-height: 40px; padding: 0 12px; }
-.tdock .auto { margin-left: auto; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
-.tdock .auto input { width: 22px; height: 22px; accent-color: var(--peach); }
+/* Chrono des exercices tenus (planche…) : un gros bouton dans la carte */
+.tbtns { display: grid; gap: 8px; margin-top: 12px; }
+.tbtn { width: 100%; min-height: 78px; border-radius: 20px; border: 3px solid var(--ink); background: transparent; color: var(--ink); font-weight: 800; font-stretch: 75%; font-size: 40px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.tbtn.run { background: var(--orange); border-color: var(--orange); color: var(--navy); }
+.tbtn.fin { background: var(--blue); border-color: var(--blue); color: #fff; }
+.rx-w { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.rx-wi { width: 84px; min-height: 48px; border-radius: 14px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); font: 800 20px var(--font); text-align: center; }
+.rx-w em { font-style: normal; font-weight: 800; color: var(--ink-soft); }
+.rx-last { display: block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+button.rx-sum { width: 100%; border: 0; text-align: left; font: inherit; cursor: pointer; }
+button.rx-sum:active { transform: scale(.985); }
+.rx-go { display: inline-flex; align-items: center; gap: 8px; }
+.rx-go i { font-style: normal; font-size: 30px; font-weight: 800; line-height: 1; }
 
 /* ---------- Vendredi : course / renfo ---------- */
 .parts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

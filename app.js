@@ -50,7 +50,7 @@ const fmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(
 /* ---------- Données et état ---------- */
 let PLAN, SESSIONS, WEEKS;
 // u : date de dernière modification par séance (synchro) · ex : séries de renfo cochées · seen : bilans vus · adj : plafonds appliqués après un bilan
-const emptyState = () => ({ done: {}, skipped: {}, u: {}, ex: {}, seen: {}, adj: {} });
+const emptyState = () => ({ done: {}, skipped: {}, u: {}, ex: {}, wt: {}, seen: {}, adj: {} });
 let state = emptyState();
 let TODAY = todayStr();
 
@@ -82,6 +82,13 @@ function normalize(o) {
   }
   r.ex = {};
   for (const [id, arr] of Object.entries((o && o.ex) || {})) if ((!ids.size || ids.has(id)) && Array.isArray(arr)) r.ex[id] = arr.slice(0, 12).map(n => Math.max(0, Math.min(9, Math.floor(Number(n)) || 0)));
+  r.wt = {};
+  for (const [id, w] of Object.entries((o && o.wt) || {})) {
+    if (!((!ids.size || ids.has(id)) && w && typeof w === 'object')) continue;
+    const c = {};
+    for (const [k, v] of Object.entries(w)) { const x = Number(v); if (k.length <= 60 && Number.isFinite(x) && x > 0 && x <= 500) c[k] = x; }
+    if (Object.keys(c).length) r.wt[id] = c;
+  }
   r.seen = {};
   for (const n of Object.keys((o && o.seen) || {})) if (/^\d{1,2}$/.test(n)) r.seen[n] = true;
   r.adj = {};
@@ -117,7 +124,7 @@ const isRun = s => ['run_easy', 'run_quality', 'run_long', 'race'].includes(s.ty
 
 // Fusion : pour chaque séance, la modification la plus récente gagne (une annulation compte comme une modification).
 function mergeStates(a, b) {
-  const r = { done: {}, skipped: {}, u: {}, ex: {}, seen: { ...a.seen, ...b.seen }, adj: {} };
+  const r = { done: {}, skipped: {}, u: {}, ex: {}, wt: {}, seen: { ...a.seen, ...b.seen }, adj: {} };
   for (const n of new Set([...Object.keys(a.adj || {}), ...Object.keys(b.adj || {})])) {
     const x = (a.adj || {})[n], y = (b.adj || {})[n];
     r.adj[n] = x && (!y || x.t >= y.t) ? x : y;
@@ -128,6 +135,7 @@ function mergeStates(a, b) {
     if (src.done[id]) r.done[id] = { ...src.done[id] };
     else if (src.skipped[id]) r.skipped[id] = true;
     if (src.ex && src.ex[id]) r.ex[id] = [...src.ex[id]];
+    if (src.wt && src.wt[id]) r.wt[id] = { ...src.wt[id] };
   }
   return r;
 }
@@ -222,19 +230,19 @@ const DAILY = [
 
 /* ---------- Renfo A : toutes les séries d'un exercice, puis on passe au suivant ---------- */
 // Renfo A : une séance sur deux, montée sur marche basse (semaines impaires) ou fentes bulgares (semaines paires).
-const EXO_STEP = ['Montée sur marche basse', '8 par jambe, marche de 15 à 20 cm, bassin stable'];
-const EXO_BULG = ['Fentes bulgares', '8 par jambe, pied arrière sur un banc, genou à 90° maximum, descente contrôlée'];
+const EXO_STEP = ['Montée sur marche basse', '8 par jambe, marche de 15 à 20 cm, bassin stable', null, true];
+const EXO_BULG = ['Fentes bulgares', '8 par jambe, pied arrière sur un banc, genou à 90° maximum, descente contrôlée', null, true];
 const EXO_ALT = ['Montée sur marche basse ou fentes bulgares', 'une séance sur deux, en alternance : 8 par jambe, genou à 90° maximum'];
 const exosFor = s => {
   const wk = s.id ? +s.id.slice(1, 3) : 0;
   const alt = !wk ? EXO_ALT : wk % 2 ? EXO_STEP : EXO_BULG;
   return [
-    ['Presse à cuisses', '10 à 12 répétitions, charge modérée, genoux à 90° max'],
-    ['Curl ischios', '10 à 12 répétitions, montée 2 s, descente 3 s'],
+    ['Presse à cuisses', '10 à 12 répétitions, charge modérée, genoux à 90° max', null, true],
+    ['Curl ischios', '10 à 12 répétitions, montée 2 s, descente 3 s', null, true],
     alt,
-    ['Hip thrust à la machine', '12 répétitions, tu augmentes la charge petit à petit'],
-    ['Mollets debout', '15 répétitions'],
-    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté', [30, 20]],
+    ['Hip thrust à la machine', '12 répétitions, tu augmentes la charge petit à petit', null, true],
+    ['Mollets debout', '15 répétitions', null, true],
+    ['Gainage', 'planche, puis planche latérale de chaque côté', [['Planche', 30], ['Latérale', 20]]],
   ];
 };
 const setsOf = s => (s.title.match(/(\d) séries/) || [])[1] ? +s.title.match(/(\d) séries/)[1] : 1; // « léger » : 1 série
@@ -719,21 +727,21 @@ const actions = {
   'sync-off': () => { if (confirm('Déconnecter cet appareil ? Ta progression reste ici, mais ne se synchronise plus.')) { setCode(''); syncMsg(''); render(); } },
   'rx-open': e => rxOpen(e.dataset.id),
   'rx-set': e => {
-    const id = rx.id, i = +e.dataset.i, k = +e.dataset.k, r = renfoOf(SESSIONS.find(x => x.id === id));
-    const cur = (state.ex[id] || [])[i] || 0, nv = cur >= k ? k - 1 : k;
-    setEx(id, i, nv);
-    if (nv > cur && rxAuto && !(i === r.exos.length - 1 && nv >= r.sets)) timerStart(r.rest);
+    const id = rx.id, i = +e.dataset.i, k = +e.dataset.k;
+    const cur = (state.ex[id] || [])[i] || 0;
+    setEx(id, i, cur >= k ? k - 1 : k);
+    const w = e.closest('.rx-item') && e.closest('.rx-item').querySelector('.rx-wi'); // la charge saisie est gardée avec la série
+    if (w && w.value) setWt(id, w.dataset.key, num(w.value));
     renderRenfo();
   },
   'rx-all': e => {
     const id = rx.id, i = +e.dataset.i, r = renfoOf(SESSIONS.find(x => x.id === id));
     setEx(id, i, ((state.ex[id] || [])[i] || 0) >= r.sets ? 0 : r.sets);
+    const w = e.closest('.rx-item') && e.closest('.rx-item').querySelector('.rx-wi');
+    if (w && w.value) setWt(id, w.dataset.key, num(w.value));
     renderRenfo();
   },
-  'rx-timer': e => timerStart(+e.dataset.s),
-  'rx-go': () => (timer.running ? timerPause() : timerStart()),
-  'rx-reset': () => timerReset(),
-  'rx-auto': e => { rxAuto = !!e.checked; try { localStorage.setItem('marathon27:rxauto', rxAuto ? '1' : '0'); } catch (err) { /* ignoré */ } },
+  'rx-timer': e => timerStart(e.dataset.k, +e.dataset.s),
   'rx-finish': () => {
     const id = rx.id, r = renfoOf(SESSIONS.find(x => x.id === id));
     closeSheet();
@@ -821,12 +829,12 @@ document.addEventListener('keydown', ev => {
   if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('.bar-hit')) { ev.preventDefault(); actions.pick(ev.target); }
 });
 
-/* ---------- Renfo : exercices à cocher + chrono ---------- */
+/* ---------- Renfo : exercices à cocher, charges, chrono pour les exercices tenus ---------- */
 const EXOS_B = [
-  ['Hip thrust à la machine', '12 répétitions, charge qui monte petit à petit'],
+  ['Hip thrust à la machine', '12 répétitions, charge qui monte petit à petit', null, true],
   ['Marche latérale avec élastique', '12 pas de chaque côté'],
-  ['Mollets debout', '15 répétitions'],
-  ['Planche', '30 s', [30]],
+  ['Mollets debout', '15 répétitions', null, true],
+  ['Planche', 'tiens 30 s', [['', 30]]],
 ];
 function renfoOf(s) {
   if (s.type === 'renfo' && s.day === 'lun') return { label: 'Renfo A', sets: setsOf(s), rest: 90, exos: exosFor(s), finish: 'Terminer la séance', closes: true };
@@ -842,19 +850,34 @@ function setEx(id, i, v) {
   if (a.every(x => !x)) delete state.ex[id]; else state.ex[id] = a;
   touch(id); save();
 }
+// Charges : celle de la séance, sinon la dernière utilisée pour cet exercice (pour la remettre d'office)
+function setWt(id, key, v) {
+  const w = { ...(state.wt[id] || {}) };
+  if (v > 0) w[key] = v; else delete w[key];
+  if (Object.keys(w).length) state.wt[id] = w; else delete state.wt[id];
+  touch(id); save();
+}
+function lastWeight(key, s) {
+  let best = null;
+  for (const [id, w] of Object.entries(state.wt)) {
+    const o = SESSIONS.find(x => x.id === id);
+    if (!o || o.id === s.id || o.date >= s.date || w[key] == null) continue;
+    if (!best || o.date > best.date) best = { date: o.date, kg: w[key] };
+  }
+  return best ? best.kg : null;
+}
+const fmtKg = n => String(n).replace('.', ',');
 function renfoSummary(s) {
   const r = renfoOf(s); if (!r || READONLY) return '';
   const n = r.exos.length, d = exDoneCount(s, r);
-  return `<div class="rx-sum"><div><b>${r.label}</b><span>${n} exercices · ${r.sets} série${r.sets > 1 ? 's' : ''} · repos ${r.rest} s</span></div><b class="rx-prog">${d}/${n}</b></div>
-    <button class="btn ghost block" data-a="rx-open" data-id="${s.id}">${d ? 'Continuer' : 'Ouvrir'} la liste d’exercices</button>`;
+  return `<button type="button" class="rx-sum" data-a="rx-open" data-id="${s.id}" aria-label="${r.label} : ouvrir la liste des exercices, ${d} sur ${n} faits">
+    <span><b>${r.label}</b><span>${n} exercices · ${r.sets} série${r.sets > 1 ? 's' : ''} · repos ${r.rest} s</span></span>
+    <span class="rx-go"><b class="rx-prog">${d}/${n}</b><i aria-hidden="true">›</i></span></button>`;
 }
 
 let rx = null; // séance de renfo ouverte
-const timer = { total: 90, left: 90, end: 0, running: false, iv: null };
-let rxAuto = true;
-try { rxAuto = localStorage.getItem('marathon27:rxauto') !== '0'; } catch (e) { /* ignoré */ }
+const timer = { key: null, left: 0, end: 0, running: false, iv: null };
 let audioCtx = null, wakeLock = null;
-
 function beep() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -869,37 +892,41 @@ function beep() {
 }
 const fmtClock = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 function paintTimer() {
-  const el = $('#tm'); if (el) el.textContent = fmtClock(timer.left);
-  const dock = $('.tdock');
-  if (dock) { dock.classList.toggle('run', timer.running); dock.classList.toggle('end', !timer.running && timer.left === 0); }
-  const b = $('#tm-go'); if (b) b.textContent = timer.running ? 'Pause' : timer.left === 0 || timer.left === timer.total ? 'Démarrer' : 'Reprendre';
+  document.querySelectorAll('.tbtn').forEach(b => {
+    const act = b.dataset.k === timer.key;
+    b.classList.toggle('run', act && timer.running);
+    b.classList.toggle('fin', act && !timer.running && timer.left === 0);
+    b.textContent = act ? (timer.running ? fmtClock(timer.left) : timer.left === 0 ? 'Fini ✓' : b.dataset.l) : b.dataset.l;
+  });
 }
 function tickTimer() {
   if (timer.running) {
     timer.left = Math.max(0, Math.ceil((timer.end - Date.now()) / 1000));
-    if (timer.left === 0) { timer.running = false; clearInterval(timer.iv); beep(); }
+    if (timer.left === 0) {
+      timer.running = false; clearInterval(timer.iv); beep();
+      const k = timer.key; setTimeout(() => { if (timer.key === k && !timer.running) { timer.key = null; paintTimer(); } }, 2500);
+    }
   }
   paintTimer();
 }
-function timerStart(sec) {
+function timerStop() { clearInterval(timer.iv); timer.running = false; timer.key = null; timer.left = 0; paintTimer(); }
+function timerStart(key, sec) {
+  if (timer.running && timer.key === key) return timerStop(); // un second tap l'arrête
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) { /* ignoré */ }
-  if (sec) { timer.total = sec; timer.left = sec; }
-  if (timer.left <= 0) timer.left = timer.total;
-  timer.end = Date.now() + timer.left * 1000; timer.running = true;
-  clearInterval(timer.iv); timer.iv = setInterval(tickTimer, 250); tickTimer();
+  clearInterval(timer.iv);
+  timer.key = key; timer.left = sec; timer.end = Date.now() + sec * 1000; timer.running = true;
+  timer.iv = setInterval(tickTimer, 250); tickTimer();
 }
-function timerPause() { timer.running = false; clearInterval(timer.iv); paintTimer(); }
-function timerReset() { timerPause(); timer.left = timer.total; paintTimer(); }
 async function wakeOn() { try { if (navigator.wakeLock && !wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* ignoré */ } }
 function rxStop() {
   if (!rx) return;
-  rx = null; timerPause();
+  rx = null; timerStop();
   try { if (wakeLock) wakeLock.release(); } catch (e) { /* ignoré */ }
   wakeLock = null;
 }
 function rxOpen(id) {
   const s = SESSIONS.find(x => x.id === id), r = s && renfoOf(s); if (!r) return;
-  rx = { id }; timerPause(); timer.total = timer.left = r.rest;
+  rx = { id }; timerStop();
   renderRenfo(); wakeOn();
 }
 function renderRenfo() {
@@ -907,30 +934,38 @@ function renderRenfo() {
   const s = SESSIONS.find(x => x.id === rx.id), r = renfoOf(s), cnt = exCounts(s.id, r), n = r.exos.length;
   const doneN = r.exos.filter((_, i) => cnt[i] >= r.sets).length;
   const old = $('.rx-panel'), top = old ? old.scrollTop : 0;
-  const items = r.exos.map(([name, det, timers], i) => {
+  const items = r.exos.map(([name, det, timers, load], i) => {
     const full = cnt[i] >= r.sets;
     const sets = Array.from({ length: r.sets }, (_, k) => `<button type="button" class="rx-set" data-a="rx-set" data-i="${i}" data-k="${k + 1}" aria-pressed="${cnt[i] > k}" aria-label="Série ${k + 1} sur ${r.sets} : ${esc(name)}">${k + 1}</button>`).join('');
-    const chips = (timers || []).map(t => `<button type="button" class="rx-chip" data-a="rx-timer" data-s="${t}">⏱ ${t} s</button>`).join('');
+    const saved = (state.wt[s.id] || {})[name];
+    const last = load && saved == null ? lastWeight(name, s) : null;
+    const wv = saved != null ? saved : last;
+    const weight = load ? `<label class="rx-w"><span class="sr">Charge de ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" inputmode="decimal" autocomplete="off" placeholder="–" value="${wv != null ? fmtKg(wv) : ''}"><em>kg</em></label>` : '';
+    const hint = last != null ? `<small class="rx-last">Dernière fois : ${fmtKg(last)} kg</small>` : '';
+    const tb = (timers || []).map(([label, sec], j) => {
+      const l = label ? `${label} ${sec} s` : `${sec} s`;
+      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-s="${sec}" data-l="${esc(l)}">${esc(l)}</button>`;
+    }).join('');
     return `<li class="rx-item ${full ? 'is-full' : ''}"><button type="button" class="rx-check" data-a="rx-all" data-i="${i}" aria-pressed="${full}" aria-label="${full ? 'Décocher' : 'Cocher'} : ${esc(name)}">${I.check}</button>
-      <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${chips}</div></div></li>`;
+      <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${weight}</div>${hint}
+      ${tb ? `<div class="tbtns">${tb}</div>` : ''}</div></li>`;
   }).join('');
   $('#sheet-root').innerHTML = `<div class="scrim full" data-a="close-sheet"><div class="sheet full rx-panel" role="dialog" aria-modal="true" aria-labelledby="rx-t">
     <button type="button" class="x" data-a="close-sheet" aria-label="Fermer">✕</button>
     <h2 id="rx-t">${r.label}</h2>
     <p>${fmtDate(s.date)} · ${r.sets} série${r.sets > 1 ? 's' : ''} par exercice · repos ${r.rest} s</p>
     <div class="bar" style="margin-top:14px"><i style="width:${Math.round((doneN / n) * 100)}%"></i></div>
-    <p class="small muted" style="margin:6px 0 14px">${doneN} exercice${doneN > 1 ? 's' : ''} sur ${n} · touche une série pour la valider${rxAuto ? ', le chrono part tout seul' : ''}</p>
+    <p class="small muted" style="margin:6px 0 14px">${doneN} exercice${doneN > 1 ? 's' : ''} sur ${n} · touche une série pour la valider</p>
     <ol class="rx">${items}</ol>
     <div class="sh-actions"><button type="button" class="btn block" data-a="rx-finish">${r.finish}</button></div>
-    </div>
-    <div class="tdock"><div class="tdock-top"><span id="tm" class="tm">${fmtClock(timer.left)}</span>
-      <div class="tdock-btns"><button type="button" class="btn small" id="tm-go" data-a="rx-go">Démarrer</button><button type="button" class="btn small line" data-a="rx-reset">Zéro</button></div></div>
-      <div class="tdock-pre">${[20, 30, 60, 90, 120].map(t => `<button type="button" class="rx-chip" data-a="rx-timer" data-s="${t}">${t < 120 ? t + ' s' : '2 min'}</button>`).join('')}
-        <label class="auto"><input type="checkbox" data-a="rx-auto" ${rxAuto ? 'checked' : ''}> Chrono auto</label></div></div>
-  </div>`;
+  </div></div>`;
   const p = $('.rx-panel'); if (p) p.scrollTop = top;
   paintTimer();
 }
+document.addEventListener('input', ev => {
+  const t = ev.target;
+  if (rx && t.matches && t.matches('.rx-wi')) setWt(rx.id, t.dataset.key, num(t.value));
+});
 
 /* ---------- Séances manquées : rappel ---------- */
 function missStreak() {
