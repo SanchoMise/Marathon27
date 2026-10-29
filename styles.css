@@ -339,8 +339,10 @@ span.knee-tag { display: inline-flex; align-items: center; min-height: 32px; }
 @media (prefers-color-scheme: dark) { .rx-set[aria-pressed="true"] { background: var(--peach); border-color: var(--peach); color: var(--navy); } }
 .rx-chip { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--line); background: transparent; color: var(--ink); font-weight: 800; font-size: 15px; }
 /* Chrono des exercices tenus (planche…) : un gros bouton dans la carte */
-.tbtns { display: grid; gap: 8px; margin-top: 12px; }
-.tbtn { width: 100%; min-height: 78px; border-radius: 20px; border: 3px solid var(--ink); background: transparent; color: var(--ink); font-weight: 800; font-stretch: 75%; font-size: 40px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.tbtns { display: grid; gap: 6px; margin-left: auto; width: 150px; }
+.tbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 64px; padding: 4px 6px; border-radius: 18px; border: 3px solid var(--ink); background: transparent; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tbtn small { font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; opacity: .75; line-height: 1; }
+.tbtn b { font-size: 36px; font-weight: 800; font-stretch: 75%; letter-spacing: -.01em; line-height: 1.05; }
 .tbtn.run { background: var(--orange); border-color: var(--orange); color: var(--navy); }
 .tbtn.fin { background: var(--blue); border-color: var(--blue); color: #fff; }
 .rx-w { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }

@@ -896,7 +896,7 @@ function paintTimer() {
     const act = b.dataset.k === timer.key;
     b.classList.toggle('run', act && timer.running);
     b.classList.toggle('fin', act && !timer.running && timer.left === 0);
-    b.textContent = act ? (timer.running ? fmtClock(timer.left) : timer.left === 0 ? 'Fini ✓' : b.dataset.l) : b.dataset.l;
+    const big = b.querySelector('b'); if (big) big.textContent = act ? (timer.running ? fmtClock(timer.left) : timer.left === 0 ? 'Fini ✓' : b.dataset.l) : b.dataset.l;
   });
 }
 function tickTimer() {
@@ -943,12 +943,10 @@ function renderRenfo() {
     const weight = load ? `<label class="rx-w"><span class="sr">Charge de ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" inputmode="decimal" autocomplete="off" placeholder="–" value="${wv != null ? fmtKg(wv) : ''}"><em>kg</em></label>` : '';
     const hint = last != null ? `<small class="rx-last">Dernière fois : ${fmtKg(last)} kg</small>` : '';
     const tb = (timers || []).map(([label, sec], j) => {
-      const l = label ? `${label} ${sec} s` : `${sec} s`;
-      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-s="${sec}" data-l="${esc(l)}">${esc(l)}</button>`;
+      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-s="${sec}" data-l="${sec} s" aria-label="Chrono ${label ? esc(label) + ' ' : ''}${sec} secondes">${label ? `<small>${esc(label)}</small>` : ''}<b>${sec} s</b></button>`;
     }).join('');
     return `<li class="rx-item ${full ? 'is-full' : ''}"><button type="button" class="rx-check" data-a="rx-all" data-i="${i}" aria-pressed="${full}" aria-label="${full ? 'Décocher' : 'Cocher'} : ${esc(name)}">${I.check}</button>
-      <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${weight}</div>${hint}
-      ${tb ? `<div class="tbtns">${tb}</div>` : ''}</div></li>`;
+      <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${weight}${tb ? `<div class="tbtns">${tb}</div>` : ''}</div>${hint}</div></li>`;
   }).join('');
   $('#sheet-root').innerHTML = `<div class="scrim full" data-a="close-sheet"><div class="sheet full rx-panel" role="dialog" aria-modal="true" aria-labelledby="rx-t">
     <button type="button" class="x" data-a="close-sheet" aria-label="Fermer">✕</button>
