@@ -280,7 +280,23 @@ const kneeTag = id => {
   const k = state.done[id] && state.done[id].knee;
   return k ? `<span class="knee-tag ${k}" role="img" aria-label="Genoux : ${KNEE[k]}">${KNEE[k]}</span>` : '';
 };
-const partsLine = id => { const p = state.done[id] && state.done[id].parts; return p && !(p.run && p.renfo) ? `<span class="stats-line">${p.run ? 'Course seule' : 'Renfo seul'}</span>` : ''; };
+const partsLine = id => {
+  const p = state.done[id] && state.done[id].parts, sess = SESSIONS.find(x => x.id === id);
+  if (p && !(p.run && p.renfo)) return `<span class="stats-line">${p.run ? 'Course seule' : 'Renfo seul'}</span>`;
+  return state.done[id] && sess && sess.extra ? '<span class="stats-line">Course + renfo B</span>' : '';
+};
+// Vendredi non tranché : deux lignes, une par partie, chacune avec son rond
+function dualRow(s, opts) {
+  const p = ptOf(s.id), t = TYPES[s.type];
+  const part = (k, label) => {
+    const v = p[k];
+    const ctl = READONLY
+      ? `<span class="check ro ${v === 's' ? 'skipped' : ''}" role="img" aria-label="${v === 'd' ? 'Faite' : v === 's' ? 'Passée' : 'À faire'}">${v === 's' ? I.cross : I.check}</span>`
+      : `${opts.late && !v ? `<button class="mini" data-a="part" data-id="${s.id}" data-p="${k}" data-v="s">Passer</button>` : ''}<button class="check ${v === 's' ? 'skipped' : ''}" data-a="part" data-id="${s.id}" data-p="${k}" data-v="${v === 'd' ? '' : 'd'}" aria-pressed="${v === 'd'}" aria-label="${v === 'd' ? 'Annuler' : v === 's' ? 'Passée, valider' : 'Valider'} : ${esc(label)}, ${fmtDate(s.date)}">${v === 's' ? I.cross : I.check}</button>`;
+    return `<div class="prow ${v === 'd' ? 'is-done' : ''} ${v === 's' ? 'is-skipped' : ''}"><span class="what">${esc(label)}</span><span class="acts">${ctl}</span></div>`;
+  };
+  return `<div class="row dual"><span class="stripe ${t.cls}"></span><div class="dual-body"><span class="when">${fmtDate(s.date)} · ${s.place}</span>${part('run', titleOf(s))}${part('renfo', 'Renfo B · 10 min')}</div></div>`;
+}
 const rowText = (s, skipped) => `<span class="when">${fmtDate(s.date)} · ${s.place}${skipped ? ' · passée' : ''}</span><span class="what">${esc(titleOf(s))}</span>`;
 function sessionRow(s, opts = {}) {
   const t = TYPES[s.type];
@@ -289,6 +305,7 @@ function sessionRow(s, opts = {}) {
     return `<div class="row"><span class="stripe t-rest"></span><div><div class="when">${fmtDate(s.date)}</div><div class="what">Repos. Rien à faire.</div></div><span></span></div>`;
   }
   const skipped = state.skipped[s.id];
+  if (s.extra && !done && !skipped) return dualRow(s, opts);
   const d = state.done[s.id] || {};
   const where = d.where ? `<span class="stats-line where-line">${KNEE[d.knee]} : ${esc(d.where)}</span>` : '';
   const note = READONLY && d.stats && d.stats.note ? `<span class="stats-line">« ${esc(d.stats.note)} »</span>` : '';

@@ -376,3 +376,14 @@ button.rx-sum:active { transform: scale(.985); }
 .part-card.decided { opacity: .78; }
 .split .hero h2 { margin-top: 2px; }
 .tbtn.rest { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+/* Vendredi non tranché : une ligne par partie */
+.row.dual { grid-template-columns: 8px 1fr; padding-right: 12px; }
+.dual-body { display: grid; gap: 2px; padding: 2px 0; }
+.prow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; }
+.prow .what { font-size: 17px; font-weight: 700; line-height: 1.2; }
+.prow .acts { display: flex; align-items: center; gap: 8px; }
+.prow .check { width: 44px; height: 44px; }
+.prow .check svg { width: 22px; height: 22px; }
+.prow.is-done .what { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--ink-soft); }
+.prow.is-skipped .what { color: var(--ink-soft); }
