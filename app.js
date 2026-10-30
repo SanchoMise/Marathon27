@@ -50,7 +50,7 @@ const fmtDur = m => (m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(
 /* ---------- Données et état ---------- */
 let PLAN, SESSIONS, WEEKS;
 // u : date de dernière modification par séance (synchro) · ex : séries de renfo cochées · seen : bilans vus · adj : plafonds appliqués après un bilan
-const emptyState = () => ({ done: {}, skipped: {}, u: {}, ex: {}, wt: {}, seen: {}, adj: {} });
+const emptyState = () => ({ done: {}, skipped: {}, u: {}, ex: {}, wt: {}, pt: {}, seen: {}, adj: {} });
 let state = emptyState();
 let TODAY = todayStr();
 
@@ -89,6 +89,12 @@ function normalize(o) {
     for (const [k, v] of Object.entries(w)) { const x = Number(v); if (k.length <= 60 && Number.isFinite(x) && x > 0 && x <= 500) c[k] = x; }
     if (Object.keys(c).length) r.wt[id] = c;
   }
+  r.pt = {};
+  for (const [id, v] of Object.entries((o && o.pt) || {})) {
+    if (!((!ids.size || ids.has(id)) && v && typeof v === 'object')) continue;
+    const c = { run: v.run === 'd' || v.run === 's' ? v.run : null, renfo: v.renfo === 'd' || v.renfo === 's' ? v.renfo : null };
+    if (c.run || c.renfo) r.pt[id] = c;
+  }
   r.seen = {};
   for (const n of Object.keys((o && o.seen) || {})) if (/^\d{1,2}$/.test(n)) r.seen[n] = true;
   r.adj = {};
@@ -124,7 +130,7 @@ const isRun = s => ['run_easy', 'run_quality', 'run_long', 'race'].includes(s.ty
 
 // Fusion : pour chaque séance, la modification la plus récente gagne (une annulation compte comme une modification).
 function mergeStates(a, b) {
-  const r = { done: {}, skipped: {}, u: {}, ex: {}, wt: {}, seen: { ...a.seen, ...b.seen }, adj: {} };
+  const r = { done: {}, skipped: {}, u: {}, ex: {}, wt: {}, pt: {}, seen: { ...a.seen, ...b.seen }, adj: {} };
   for (const n of new Set([...Object.keys(a.adj || {}), ...Object.keys(b.adj || {})])) {
     const x = (a.adj || {})[n], y = (b.adj || {})[n];
     r.adj[n] = x && (!y || x.t >= y.t) ? x : y;
@@ -136,6 +142,7 @@ function mergeStates(a, b) {
     else if (src.skipped[id]) r.skipped[id] = true;
     if (src.ex && src.ex[id]) r.ex[id] = [...src.ex[id]];
     if (src.wt && src.wt[id]) r.wt[id] = { ...src.wt[id] };
+    if (src.pt && src.pt[id]) r.pt[id] = { ...src.pt[id] };
   }
   return r;
 }
@@ -241,8 +248,8 @@ const exosFor = s => {
     ['Curl ischios', '10 à 12 répétitions, montée 2 s, descente 3 s', null, true],
     alt,
     ['Hip thrust à la machine', '12 répétitions, tu augmentes la charge petit à petit', null, true],
-    ['Mollets debout', '15 répétitions', null, true],
-    ['Gainage', 'planche, puis planche latérale de chaque côté', [['Planche', 30], ['Latérale', 20]]],
+    ['Mollets debout', '15 répétitions'],
+    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté', [['Planche', [30]], ['Latérale', [20, 5, 20], ['Côté 1', 'Récup', 'Côté 2']]]],
   ];
 };
 const setsOf = s => (s.title.match(/(\d) séries/) || [])[1] ? +s.title.match(/(\d) séries/)[1] : 1; // « léger » : 1 série
@@ -291,7 +298,9 @@ function sessionRow(s, opts = {}) {
   } else if (done) {
     main = `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails : ${esc(titleOf(s))}, ${fmtDate(s.date)}">${rowText(s, skipped)}<span class="stats-line ${statsLine(s.id) ? '' : 'hint'}">${esc(statsLine(s.id) || (isRun(s) && !(d.parts && d.parts.run === false) ? 'Ajouter mes stats ›' : 'Noter les genoux ›'))}</span>${partsLine(s.id)}${where}</button>`;
   } else {
-    main = `<div>${rowText(s, skipped)}</div>`;
+    const pr = state.pt[s.id];
+    const prog = pr && !done && !skipped ? `<span class="stats-line">${pr.run === 'd' ? 'Course faite' : pr.run === 's' ? 'Course passée' : 'Course à faire'} · ${pr.renfo === 'd' ? 'renfo fait' : pr.renfo === 's' ? 'renfo passé' : 'renfo à faire'}</span>` : '';
+    main = `<div>${rowText(s, skipped)}${prog}</div>`;
   }
   const passed = !done && skipped;
   const acts = READONLY
@@ -373,7 +382,35 @@ function cheerCard(text, kind) {
   return `<figure class="quote"><figcaption>${kind === 'skip' ? 'Pas grave' : kind ? 'Bien joué' : 'Un mot pour toi'}</figcaption><blockquote>${esc(text)}</blockquote></figure>`;
 }
 
+function heroSplit(s, isToday, afterDone) {
+  const p = ptOf(s.id), m = minutesOf(s);
+  const when = isToday ? 'Aujourd’hui' : afterDone ? fmtDate(s.date) : TODAY < s.date ? `Prochaine séance · ${fmtDate(s.date)}` : fmtDate(s.date);
+  const btns = k => p[k] === 'd'
+    ? `<span class="done-badge">${I.check.replace('<svg', '<svg width="28" height="28"')} Faite</span><button class="btn ghost small" data-a="part" data-id="${s.id}" data-p="${k}" data-v="">Annuler</button>`
+    : p[k] === 's'
+      ? `<span class="done-badge">Passée</span><button class="btn ghost small" data-a="part" data-id="${s.id}" data-p="${k}" data-v="">Annuler</button>`
+      : `<button class="btn" data-a="part" data-id="${s.id}" data-p="${k}" data-v="d">${I.check.replace('<svg', '<svg width="24" height="24"')} C’est fait</button>${s.date <= TODAY ? `<button class="btn ghost small" data-a="part" data-id="${s.id}" data-p="${k}" data-v="s">Je passe</button>` : ''}`;
+  return `<div class="split">
+    <article class="card hero t-easy ${p.run ? 'decided' : ''}" aria-label="Course : ${esc(titleOf(s))}">
+      <div class="kicker"><span>${when}</span><span class="chip">Course</span></div>
+      <div class="big" aria-hidden="true"><span class="n">${m}</span><span class="u">min</span></div>
+      <h2>${esc(titleOf(s))}</h2>
+      <p class="extra"><span class="chip">${s.place}</span></p>
+      ${tipOf(s) ? `<p class="tip">${esc(tipOf(s))}</p>` : ''}
+      <div class="cta-row">${btns('run')}</div>
+    </article>
+    <article class="card hero t-renfo ${p.renfo ? 'decided' : ''}" aria-label="Renfo B">
+      <div class="kicker"><span>Juste après la course</span><span class="chip">Renfo</span></div>
+      <div class="big" aria-hidden="true"><span class="n">10</span><span class="u">min</span></div>
+      <h2>Renfo B</h2>
+      ${renfoSummary(s)}
+      <div class="cta-row">${btns('renfo')}</div>
+    </article>
+  </div>`;
+}
+
 function heroCard(s, isToday, afterDone) {
+  if (s.extra && !READONLY) return heroSplit(s, isToday, afterDone);
   const t = TYPES[s.type];
   const done = isDone(s.id);
   const m = minutesOf(s);
@@ -622,6 +659,7 @@ async function refreshShared() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
+  if (rx) wakeOn();
   if (READONLY) refreshShared(); else syncNow(true);
 });
 
@@ -643,8 +681,7 @@ function openKnee(id, fresh) {
   const prefill = !d.stats && isRun(s) ? expectedStats(s) : null;
   const st = d.stats || prefill || {};
   sheetKnee = d.knee || null;
-  sheetParts = d.parts ? { run: d.parts.run !== false, renfo: d.parts.renfo !== false } : { run: true, renfo: true };
-  const pb = (k, label) => `<button type="button" class="part" data-a="pick-part" data-k="${k}" aria-pressed="${sheetParts[k]}">${label}</button>`;
+  sheetParts = { run: ptOf(id).run !== 's', renfo: ptOf(id).renfo !== 's' };
   const whereOn = k => k === 'gene' || k === 'douleur';
   const kb = (k, label) => `<button type="button" class="opt ${k}" data-a="pick-knee" data-k="${k}" aria-pressed="${sheetKnee === k}">${label}</button>`;
   const field = (name, label, val, mode, ph) => `<label class="fld"><span>${label}</span><input name="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${val == null ? '' : esc(String(val).replace('.', name === 'pace' ? '.' : ','))}"></label>`;
@@ -652,7 +689,6 @@ function openKnee(id, fresh) {
   $('#sheet-root').innerHTML = `<div class="scrim ${full ? 'full' : ''}" data-a="close-sheet"><form class="sheet ${full ? 'full' : ''}" id="sheet-form" data-id="${id}" role="dialog" aria-modal="true" aria-labelledby="sh-t">
     <button type="button" class="x" data-a="close-sheet" aria-label="Fermer">✕</button>
     <h2 id="sh-t">Comment c’était ?</h2><p>${esc(titleOf(s))} · tout est optionnel.</p>
-    ${s.extra ? `<h3 class="sh-h">Ce que tu as fait</h3><div class="parts">${pb('run', 'Course')}${pb('renfo', 'Renfo B')}</div>` : ''}
     <h3 class="sh-h">Tes genoux</h3>
     <div class="knee-opts">${kb('ras', 'RAS')}${kb('gene', 'Gêne')}${kb('douleur', 'Douleur')}</div>
     <div class="where" id="where-box" ${whereOn(sheetKnee) ? '' : 'hidden'}>
@@ -696,7 +732,40 @@ function buildICS() {
 const icsEsc = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 
 /* ---------- Actions ---------- */
+/* ---------- Vendredi : deux parties (course, renfo B), chacune « faite » ou « passée » ---------- */
+function ptOf(id) {
+  if (state.pt[id]) return state.pt[id];
+  const d = state.done[id];
+  if (d) return { run: d.parts && d.parts.run === false ? 's' : 'd', renfo: d.parts && d.parts.renfo === false ? 's' : 'd' };
+  if (state.skipped[id]) return { run: 's', renfo: 's' };
+  return { run: null, renfo: null };
+}
+// La séance est « faite » quand les deux parties sont tranchées et qu'au moins une est faite ; « passée » si les deux sont passées ; sinon en cours.
+function settleParts(id) {
+  const p = state.pt[id];
+  if (!p || (!p.run && !p.renfo)) { delete state.pt[id]; delete state.done[id]; delete state.skipped[id]; return; }
+  if (p.run && p.renfo) {
+    if (p.run === 's' && p.renfo === 's') { delete state.done[id]; state.skipped[id] = true; return; }
+    const d = { ...(state.done[id] || { t: new Date().toISOString(), knee: null }) };
+    delete state.skipped[id];
+    if (p.run === 'd' && p.renfo === 'd') delete d.parts; else d.parts = { run: p.run === 'd', renfo: p.renfo === 'd' };
+    if (p.run !== 'd') delete d.stats;
+    state.done[id] = d;
+  } else { delete state.done[id]; delete state.skipped[id]; }
+}
+function setPart(id, part, val) {
+  const p = { ...ptOf(id) }; p[part] = val || null;
+  state.pt[id] = p;
+  const was = isDone(id);
+  settleParts(id); touch(id); save(); render();
+  if (!was && isDone(id) && !READONLY) openKnee(id, true);
+}
 function toggle(id) {
+  const sess = SESSIONS.find(x => x.id === id);
+  if (sess && sess.extra) { // vendredi : le rond du Plan valide ou annule les deux parties
+    if (isDone(id)) { delete state.pt[id]; delete state.done[id]; touch(id); save(); render(); return; }
+    state.pt[id] = { run: 'd', renfo: 'd' }; settleParts(id); touch(id); save(); render(); openKnee(id, true); return;
+  }
   if (state.done[id]) { delete state.done[id]; touch(id); save(); render(); return; }
   delete state.skipped[id]; touch(id);
   state.done[id] = { t: new Date().toISOString(), knee: null };
@@ -741,16 +810,12 @@ const actions = {
     if (w && w.value) setWt(id, w.dataset.key, num(w.value));
     renderRenfo();
   },
-  'rx-timer': e => timerStart(e.dataset.k, +e.dataset.s),
+  'rx-timer': e => timerStart(e.dataset.k, e.dataset.steps.split(',').map(Number), e.dataset.names ? e.dataset.names.split('|') : []),
   'rx-finish': () => {
     const id = rx.id, r = renfoOf(SESSIONS.find(x => x.id === id));
     closeSheet();
-    if (r.closes && !isDone(id)) toggle(id);
-  },
-  'pick-part': e => {
-    sheetParts[e.dataset.k] = !sheetParts[e.dataset.k];
-    document.querySelectorAll('#sheet-form .part').forEach(b => b.setAttribute('aria-pressed', String(sheetParts[b.dataset.k])));
-    const box = $('#stats-box'); if (box) box.hidden = !sheetParts.run;
+    if (r.closes) { if (!isDone(id)) toggle(id); }
+    else if (ptOf(id).renfo !== 'd') setPart(id, 'renfo', 'd');
   },
   'bilan-seen': e => { state.seen[e.dataset.n] = true; save(); render(); },
   'bilan-apply': e => {
@@ -760,8 +825,13 @@ const actions = {
   },
   'adj-cancel': e => { state.adj[e.dataset.n] = { t: Date.now(), m: {} }; rebuild(); save(); render(); },
   toggle: e => toggle(e.dataset.id),
-  unskip: e => { delete state.skipped[e.dataset.id]; touch(e.dataset.id); save(); render(); },
-  skip: e => { state.skipped[e.dataset.id] = true; touch(e.dataset.id); save(); render(); },
+  unskip: e => { delete state.skipped[e.dataset.id]; delete state.pt[e.dataset.id]; touch(e.dataset.id); save(); render(); },
+  skip: e => {
+    const id = e.dataset.id, sess = SESSIONS.find(x => x.id === id);
+    if (sess && sess.extra) { state.pt[id] = { run: 's', renfo: 's' }; settleParts(id); } else state.skipped[id] = true;
+    touch(id); save(); render();
+  },
+  part: e => setPart(e.dataset.id, e.dataset.p, e.dataset.v),
   knee: e => openKnee(e.dataset.id, false),
   'close-sheet': (e, ev) => { if (ev.target === e) closeSheet(); },
   'pick-knee': e => {
@@ -803,21 +873,13 @@ document.addEventListener('submit', ev => {
   const f = ev.target.closest('#sheet-form'); if (!f) return;
   ev.preventDefault();
   const id = f.dataset.id, d = state.done[id]; if (!d) return closeSheet();
-  const sess = SESSIONS.find(x => x.id === id);
-  if (sess && sess.extra) {
-    if (!sheetParts.run && !sheetParts.renfo) {
-      if (confirm('Ni la course ni le renfo ne sont cochés : on marque la séance comme passée ?')) { delete state.done[id]; state.skipped[id] = true; touch(id); save(); closeSheet(); render(); }
-      return;
-    }
-    if (sheetParts.run && sheetParts.renfo) delete d.parts; else d.parts = { run: sheetParts.run, renfo: sheetParts.renfo };
-  }
   const v = n => (f.elements[n] ? f.elements[n].value : '');
   const pace = String(v('pace')).trim().replace(',', ':').replace('.', ':');
   const stats = cleanStats({ km: num(v('km')), min: num(v('min')), hr: num(v('hr')), pace, note: v('note') });
   d.knee = sheetKnee;
   const where = (v('where') || '').trim().slice(0, 80);
   if (where && (sheetKnee === 'gene' || sheetKnee === 'douleur')) d.where = where; else delete d.where;
-  if (stats && (!sess || !sess.extra || sheetParts.run)) d.stats = stats; else delete d.stats;
+  if (stats && !(d.parts && d.parts.run === false)) d.stats = stats; else delete d.stats;
   touch(id); save(); closeSheet(); render();
 });
 // Clavier ouvert : on amène le champ au centre de l'écran.
@@ -833,8 +895,8 @@ document.addEventListener('keydown', ev => {
 const EXOS_B = [
   ['Hip thrust à la machine', '12 répétitions, charge qui monte petit à petit', null, true],
   ['Marche latérale avec élastique', '12 pas de chaque côté'],
-  ['Mollets debout', '15 répétitions', null, true],
-  ['Planche', 'tiens 30 s', [['', 30]]],
+  ['Mollets debout', '15 répétitions'],
+  ['Planche', '2 × 30 s avec 5 s de récup entre les deux', [['Planche', [30, 5, 30], ['1/2', 'Récup', '2/2']]]],
 ];
 function renfoOf(s) {
   if (s.type === 'renfo' && s.day === 'lun') return { label: 'Renfo A', sets: setsOf(s), rest: 90, exos: exosFor(s), finish: 'Terminer la séance', closes: true };
@@ -876,48 +938,65 @@ function renfoSummary(s) {
 }
 
 let rx = null; // séance de renfo ouverte
-const timer = { key: null, left: 0, end: 0, running: false, iv: null };
+const timer = { key: null, steps: [], names: [], phase: 0, left: 0, end: 0, running: false, iv: null };
 let audioCtx = null, wakeLock = null;
-function beep() {
+function beep(n = 3) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.25, 0.5].forEach(d => {
-      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + d;
-      o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+    for (let k = 0; k < n; k++) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = audioCtx.currentTime + k * 0.25;
+      o.frequency.value = n === 1 ? 660 : 880; o.connect(g); g.connect(audioCtx.destination);
       g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
       o.start(t); o.stop(t + 0.2);
-    });
+    }
   } catch (e) { /* ignoré */ }
-  try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) { /* ignoré */ }
+  try { if (navigator.vibrate) navigator.vibrate(n === 1 ? [120] : [200, 100, 200]); } catch (e) { /* ignoré */ }
 }
 const fmtClock = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+// Un chrono = une suite d'étapes (ex. 30 s, 5 s de récup, 30 s) lancée d'un seul tap.
 function paintTimer() {
   document.querySelectorAll('.tbtn').forEach(b => {
-    const act = b.dataset.k === timer.key;
-    b.classList.toggle('run', act && timer.running);
+    const act = b.dataset.k === timer.key, big = b.querySelector('b'), small = b.querySelector('small');
+    const resting = act && timer.running && timer.names[timer.phase] === 'Récup';
+    b.classList.toggle('run', act && timer.running && !resting);
+    b.classList.toggle('rest', resting);
     b.classList.toggle('fin', act && !timer.running && timer.left === 0);
-    const big = b.querySelector('b'); if (big) big.textContent = act ? (timer.running ? fmtClock(timer.left) : timer.left === 0 ? 'Fini ✓' : b.dataset.l) : b.dataset.l;
+    if (big) big.textContent = act ? (timer.running ? fmtClock(timer.left) : timer.left === 0 ? 'Fini ✓' : b.dataset.l) : b.dataset.l;
+    if (small) small.textContent = act && timer.running && timer.names[timer.phase] ? `${b.dataset.label} · ${timer.names[timer.phase]}` : b.dataset.label;
   });
 }
 function tickTimer() {
   if (timer.running) {
     timer.left = Math.max(0, Math.ceil((timer.end - Date.now()) / 1000));
     if (timer.left === 0) {
-      timer.running = false; clearInterval(timer.iv); beep();
-      const k = timer.key; setTimeout(() => { if (timer.key === k && !timer.running) { timer.key = null; paintTimer(); } }, 2500);
+      if (timer.phase < timer.steps.length - 1) { // étape suivante (récup, puis 2e effort)
+        timer.phase++; timer.left = timer.steps[timer.phase]; timer.end = Date.now() + timer.left * 1000; beep(1);
+      } else {
+        timer.running = false; clearInterval(timer.iv); beep();
+        const k = timer.key; setTimeout(() => { if (timer.key === k && !timer.running) { timer.key = null; paintTimer(); } }, 2500);
+      }
     }
   }
   paintTimer();
 }
-function timerStop() { clearInterval(timer.iv); timer.running = false; timer.key = null; timer.left = 0; paintTimer(); }
-function timerStart(key, sec) {
+function timerStop() { clearInterval(timer.iv); timer.running = false; timer.key = null; timer.left = 0; timer.phase = 0; paintTimer(); }
+function timerStart(key, steps, names) {
   if (timer.running && timer.key === key) return timerStop(); // un second tap l'arrête
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) { /* ignoré */ }
   clearInterval(timer.iv);
-  timer.key = key; timer.left = sec; timer.end = Date.now() + sec * 1000; timer.running = true;
+  Object.assign(timer, { key, steps, names, phase: 0, left: steps[0], end: Date.now() + steps[0] * 1000, running: true });
   timer.iv = setInterval(tickTimer, 250); tickTimer();
+  wakeOn(); // l'écran reste allumé pendant le chrono
 }
-async function wakeOn() { try { if (navigator.wakeLock && !wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* ignoré */ } }
+// Écran allumé : on redemande le verrou s'il a été relâché (retour sur l'app, mise en veille…)
+async function wakeOn() {
+  try {
+    if (!navigator.wakeLock || !rx) return;
+    if (wakeLock && !wakeLock.released) return;
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { wakeLock = null; }
+}
 function rxStop() {
   if (!rx) return;
   rx = null; timerStop();
@@ -942,8 +1021,9 @@ function renderRenfo() {
     const wv = saved != null ? saved : last;
     const weight = load ? `<label class="rx-w"><span class="sr">Charge de ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" inputmode="decimal" autocomplete="off" placeholder="–" value="${wv != null ? fmtKg(wv) : ''}"><em>kg</em></label>` : '';
     const hint = last != null ? `<small class="rx-last">Dernière fois : ${fmtKg(last)} kg</small>` : '';
-    const tb = (timers || []).map(([label, sec], j) => {
-      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-s="${sec}" data-l="${sec} s" aria-label="Chrono ${label ? esc(label) + ' ' : ''}${sec} secondes">${label ? `<small>${esc(label)}</small>` : ''}<b>${sec} s</b></button>`;
+    const tb = (timers || []).map(([label, steps, names], j) => {
+      const work = steps.filter((_, x) => x % 2 === 0), idle = work.length > 1 ? `${work.length}×${work[0]} s` : `${work[0]} s`;
+      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-steps="${steps.join(',')}" data-names="${(names || []).join('|')}" data-label="${esc(label)}" data-l="${idle}" aria-label="Chrono ${esc(label)} ${work.length > 1 ? work.length + ' fois ' : ''}${work[0]} secondes${steps.length > 1 ? ', avec 5 secondes de récupération' : ''}"><small>${esc(label)}</small><b>${idle}</b></button>`;
     }).join('');
     return `<li class="rx-item ${full ? 'is-full' : ''}"><button type="button" class="rx-check" data-a="rx-all" data-i="${i}" aria-pressed="${full}" aria-label="${full ? 'Décocher' : 'Cocher'} : ${esc(name)}">${I.check}</button>
       <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${weight}${tb ? `<div class="tbtns">${tb}</div>` : ''}</div>${hint}</div></li>`;
