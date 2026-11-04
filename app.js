@@ -71,7 +71,7 @@ function normalize(o) {
   const ids = new Set(SESSIONS ? SESSIONS.map(s => s.id) : []);
   const r = { done: {}, skipped: {}, u: {} };
   for (const [id, v] of Object.entries((o && o.done) || {})) {
-    if (!ids.size || ids.has(id)) { r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null }; const st = cleanStats(v.stats); if (st) r.done[id].stats = st; if (v.parts && typeof v.parts === 'object' && (v.parts.run === false || v.parts.renfo === false)) r.done[id].parts = { run: v.parts.run !== false, renfo: v.parts.renfo !== false }; if (typeof v.where === 'string' && v.where.trim() && r.done[id].knee && r.done[id].knee !== 'ras') r.done[id].where = v.where.trim().slice(0, 80); }
+    if (!ids.size || ids.has(id)) { r.done[id] = { t: v.t || null, knee: KNEE[v.knee] ? v.knee : null }; const st = cleanStats(v.stats); if (st) r.done[id].stats = st; if (v.loc === 'tapis' || v.loc === 'exterieur') r.done[id].loc = v.loc; if (v.parts && typeof v.parts === 'object' && (v.parts.run === false || v.parts.renfo === false)) r.done[id].parts = { run: v.parts.run !== false, renfo: v.parts.renfo !== false }; if (typeof v.where === 'string' && v.where.trim() && r.done[id].knee && r.done[id].knee !== 'ras') r.done[id].where = v.where.trim().slice(0, 80); }
   }
   for (const id of Object.keys((o && o.skipped) || {})) if (!ids.size || ids.has(id)) r.skipped[id] = true;
   const u = (o && o.u) || {};
@@ -119,10 +119,12 @@ const num = v => Number(String(v || '').trim().replace(',', '.'));
 const fmtPace = sec => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
 const paceOf = st => st && (st.pace || (st.km && st.min ? fmtPace((st.min * 60) / st.km) : null));
 const fmtKm = km => String(Math.round(km * 100) / 100).replace('.', ',');
+const LOC = { tapis: 'Tapis', exterieur: 'Extérieur' };
 function statsLine(id) {
-  const st = state.done[id] && state.done[id].stats; if (!st) return '';
+  const d = state.done[id]; if (!d) return '';
+  const st = d.stats || {};
   const p = paceOf(st);
-  return [st.km && `${fmtKm(st.km)} km`, st.min && `${fmtMin(st.min)}`, p && `${p}/km`, st.hr && `${st.hr} bpm`].filter(Boolean).join(' · ');
+  return [d.loc && LOC[d.loc], st.km && `${fmtKm(st.km)} km`, st.min && `${fmtMin(st.min)}`, p && `${p}/km`, st.hr && `${st.hr} bpm`].filter(Boolean).join(' · ');
 }
 const fmtMin = m => (m >= 60 ? `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, '0')}` : `${Math.round(m * 10) / 10} min`.replace('.', ','));
 const totalKm = () => Object.values(state.done).reduce((a, d) => a + ((d.stats && d.stats.km) || 0), 0);
@@ -249,7 +251,7 @@ const exosFor = s => {
     alt,
     ['Hip thrust à la machine', '12 répétitions, tu augmentes la charge petit à petit', null, true],
     ['Mollets debout', '15 répétitions'],
-    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté', [['Planche', [30]], ['Latérale', [20, 5, 20], ['Côté 1', 'Récup', 'Côté 2']]]],
+    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté', [['Gainage', [30, 5, 20, 5, 20], ['Planche', 'Récup', 'Latérale 1/2', 'Récup', 'Latérale 2/2']]]],
   ];
 };
 const setsOf = s => (s.title.match(/(\d) séries/) || [])[1] ? +s.title.match(/(\d) séries/)[1] : 1; // « léger » : 1 série
@@ -692,6 +694,7 @@ function expectedStats(s) {
 }
 let sheetKnee = null;
 let sheetParts = { run: true, renfo: true };
+let sheetLoc = 'tapis';
 function openKnee(id, fresh) {
   const s = SESSIONS.find(x => x.id === id);
   const d = state.done[id] || {};
@@ -699,6 +702,7 @@ function openKnee(id, fresh) {
   const st = d.stats || prefill || {};
   sheetKnee = d.knee || null;
   sheetParts = { run: ptOf(id).run !== 's', renfo: ptOf(id).renfo !== 's' };
+  sheetLoc = d.loc || (s.place === 'tapis' ? 'tapis' : 'exterieur');
   const whereOn = k => k === 'gene' || k === 'douleur';
   const kb = (k, label) => `<button type="button" class="opt ${k}" data-a="pick-knee" data-k="${k}" aria-pressed="${sheetKnee === k}">${label}</button>`;
   const field = (name, label, val, mode, ph) => `<label class="fld"><span>${label}</span><input name="${name}" inputmode="${mode}" autocomplete="off" placeholder="${ph}" value="${val == null ? '' : esc(String(val).replace('.', name === 'pace' ? '.' : ','))}"></label>`;
@@ -712,7 +716,9 @@ function openKnee(id, fresh) {
       <label class="fld wide"><span>Où ? (précision)</span><input name="where" autocomplete="off" placeholder="genou droit, cheville gauche…" value="${esc(d.where || '')}"></label>
       <div class="chips">${['genou droit', 'genou gauche', 'cheville droite', 'cheville gauche', 'mollet', 'hanche', 'dos'].map(w => `<button type="button" class="chip-btn" data-a="where-chip" data-v="${w}">${w}</button>`).join('')}</div>
     </div>
-    ${isRun(s) ? `<div id="stats-box" ${sheetParts.run ? '' : 'hidden'}><h3 class="sh-h">Tes stats</h3><p class="small muted" style="margin:0 0 8px">${prefill ? 'Pré-rempli avec ce que le plan prévoit : change ce qui diffère.' : 'Recopie ce qui est sur la montre ou le tapis.'}</p>
+    ${isRun(s) ? `<div id="stats-box" ${sheetParts.run ? '' : 'hidden'}><h3 class="sh-h">Où as-tu couru ?</h3>
+    <div class="parts" role="group" aria-label="Lieu de la course">${['tapis', 'exterieur'].map(k => `<button type="button" class="part" data-a="pick-loc" data-k="${k}" aria-pressed="${sheetLoc === k}">${LOC[k]}</button>`).join('')}</div>
+    <h3 class="sh-h">Tes stats</h3><p class="small muted" style="margin:0 0 8px">${prefill ? 'Pré-rempli avec ce que le plan prévoit : change ce qui diffère.' : 'Recopie ce qui est sur la montre ou le tapis.'}</p>
     <div class="flds">
       ${field('km', 'Distance (km)', st.km, 'decimal', '5,2')}
       ${field('min', 'Durée (min)', st.min, 'decimal', '32')}
@@ -834,6 +840,10 @@ const actions = {
     if (r.closes) { if (!isDone(id)) toggle(id); }
     else if (ptOf(id).renfo !== 'd') setPart(id, 'renfo', 'd');
   },
+  'pick-loc': e => {
+    sheetLoc = e.dataset.k;
+    document.querySelectorAll('#sheet-form [data-a=pick-loc]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === sheetLoc)));
+  },
   'bilan-seen': e => { state.seen[e.dataset.n] = true; save(); render(); },
   'bilan-apply': e => {
     const w = WEEKS[+e.dataset.n - 1], b = bilanFor(w);
@@ -897,6 +907,8 @@ document.addEventListener('submit', ev => {
   const where = (v('where') || '').trim().slice(0, 80);
   if (where && (sheetKnee === 'gene' || sheetKnee === 'douleur')) d.where = where; else delete d.where;
   if (stats && !(d.parts && d.parts.run === false)) d.stats = stats; else delete d.stats;
+  const sessL = SESSIONS.find(x => x.id === id);
+  if (sessL && isRun(sessL) && !(d.parts && d.parts.run === false)) d.loc = sheetLoc; else delete d.loc;
   touch(id); save(); closeSheet(); render();
 });
 // Clavier ouvert : on amène le champ au centre de l'écran.
@@ -913,7 +925,7 @@ const EXOS_B = [
   ['Hip thrust à la machine', '12 répétitions, charge qui monte petit à petit', null, true],
   ['Marche latérale avec élastique', '12 pas de chaque côté'],
   ['Mollets debout', '15 répétitions'],
-  ['Planche', '2 × 30 s avec 5 s de récup entre les deux', [['Planche', [30, 5, 30], ['1/2', 'Récup', '2/2']]]],
+  ['Planche', '2 × 30 s avec 5 s de récup entre les deux', [['Planche', [30, 5, 30], ['Planche 1/2', 'Récup', 'Planche 2/2']]]],
 ];
 function renfoOf(s) {
   if (s.type === 'renfo' && s.day === 'lun') return { label: 'Renfo A', sets: setsOf(s), rest: 90, exos: exosFor(s), finish: 'Terminer la séance', closes: true };
@@ -979,7 +991,7 @@ function paintTimer() {
     b.classList.toggle('rest', resting);
     b.classList.toggle('fin', act && !timer.running && timer.left === 0);
     if (big) big.textContent = act ? (timer.running ? fmtClock(timer.left) : timer.left === 0 ? 'Fini ✓' : b.dataset.l) : b.dataset.l;
-    if (small) small.textContent = act && timer.running && timer.names[timer.phase] ? `${b.dataset.label} · ${timer.names[timer.phase]}` : b.dataset.label;
+    if (small) small.textContent = act && timer.running && timer.names[timer.phase] ? timer.names[timer.phase] : b.dataset.label;
   });
 }
 function tickTimer() {
@@ -1039,8 +1051,9 @@ function renderRenfo() {
     const weight = load ? `<label class="rx-w"><span class="sr">Charge de ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" inputmode="decimal" autocomplete="off" placeholder="–" value="${wv != null ? fmtKg(wv) : ''}"><em>kg</em></label>` : '';
     const hint = last != null ? `<small class="rx-last">Dernière fois : ${fmtKg(last)} kg</small>` : '';
     const tb = (timers || []).map(([label, steps, names], j) => {
-      const work = steps.filter((_, x) => x % 2 === 0), idle = work.length > 1 ? `${work.length}×${work[0]} s` : `${work[0]} s`;
-      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-steps="${steps.join(',')}" data-names="${(names || []).join('|')}" data-label="${esc(label)}" data-l="${idle}" aria-label="Chrono ${esc(label)} ${work.length > 1 ? work.length + ' fois ' : ''}${work[0]} secondes${steps.length > 1 ? ', avec 5 secondes de récupération' : ''}"><small>${esc(label)}</small><b>${idle}</b></button>`;
+      const work = steps.filter((_, x) => x % 2 === 0), total = steps.reduce((p, q) => p + q, 0);
+      const idle = work.length > 1 ? (work.every(w => w === work[0]) ? `${work.length}×${work[0]} s` : fmtClock(total)) : `${work[0]} s`;
+      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-steps="${steps.join(',')}" data-names="${(names || []).join('|')}" data-label="${esc(label)}" data-l="${idle}" aria-label="Chrono ${esc(label)}, ${total} secondes en tout${steps.length > 1 ? ', récupérations comprises' : ''}"><small>${esc(label)}</small><b>${idle}</b></button>`;
     }).join('');
     return `<li class="rx-item ${full ? 'is-full' : ''}"><button type="button" class="rx-check" data-a="rx-all" data-i="${i}" aria-pressed="${full}" aria-label="${full ? 'Décocher' : 'Cocher'} : ${esc(name)}">${I.check}</button>
       <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${weight}${tb ? `<div class="tbtns">${tb}</div>` : ''}</div>${hint}</div></li>`;
@@ -1204,7 +1217,14 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
 /* ---------- Démarrage ---------- */
 (async function init() {
   try {
-    PLAN = await (await fetch('/plan.json')).json();
+    try {
+      const txt = await (await fetch('/plan.json')).text();
+      PLAN = JSON.parse(txt);
+      try { localStorage.setItem('marathon27:plan', txt); } catch (e) { /* ignoré */ }
+    } catch (e) {
+      PLAN = JSON.parse(localStorage.getItem('marathon27:plan')); // hors ligne, première visite après mise à jour impossible
+      if (!PLAN) throw e;
+    }
     BASE_WEEKS = PLAN.weeks;
     WEEKS = BASE_WEEKS;
     SESSIONS = WEEKS.flatMap(w => w.sessions);
