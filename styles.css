@@ -387,3 +387,6 @@ button.rx-sum:active { transform: scale(.985); }
 .prow .check svg { width: 22px; height: 22px; }
 .prow.is-done .what { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--ink-soft); }
 .prow.is-skipped .what { color: var(--ink-soft); }
+
+.prow .row-main { width: auto; flex: 1; min-height: 44px; }
+.prow > span > .what, .prow > span > .stats-line { display: block; }

@@ -295,7 +295,11 @@ function dualRow(s, opts) {
     const ctl = READONLY
       ? `<span class="check ro ${v === 's' ? 'skipped' : ''}" role="img" aria-label="${v === 'd' ? 'Faite' : v === 's' ? 'Passée' : 'À faire'}">${v === 's' ? I.cross : I.check}</span>`
       : `${opts.late && !v ? `<button class="mini" data-a="part" data-id="${s.id}" data-p="${k}" data-v="s">Passer</button>` : ''}<button class="check ${v === 's' ? 'skipped' : ''}" data-a="part" data-id="${s.id}" data-p="${k}" data-v="${v === 'd' ? '' : 'd'}" aria-pressed="${v === 'd'}" aria-label="${v === 'd' ? 'Annuler' : v === 's' ? 'Passée, valider' : 'Valider'} : ${esc(label)}, ${fmtDate(s.date)}">${v === 's' ? I.cross : I.check}</button>`;
-    return `<div class="prow ${v === 'd' ? 'is-done' : ''} ${v === 's' ? 'is-skipped' : ''}"><span class="what">${esc(label)}</span><span class="acts">${ctl}</span></div>`;
+    const sl = k === 'run' && v === 'd' ? statsLine(s.id) : '';
+    const txt = k === 'run' && v === 'd' && !READONLY
+      ? `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails de la course"><span class="what">${esc(label)}</span><span class="stats-line ${sl ? '' : 'hint'}">${esc(sl || 'Ajouter mes stats ›')}</span></button>`
+      : `<span><span class="what">${esc(label)}</span>${sl ? `<span class="stats-line">${esc(sl)}</span>` : ''}</span>`;
+    return `<div class="prow ${v === 'd' ? 'is-done' : ''} ${v === 's' ? 'is-skipped' : ''}">${txt}<span class="acts">${ctl}</span></div>`;
   };
   return `<div class="row dual"><span class="stripe ${t.cls}"></span><div class="dual-body"><span class="when">${fmtDate(s.date)} · ${s.place}</span>${part('run', titleOf(s))}${part('renfo', 'Renfo B · 10 min')}</div></div>`;
 }
@@ -307,7 +311,7 @@ function sessionRow(s, opts = {}) {
     return `<div class="row"><span class="stripe t-rest"></span><div><div class="when">${fmtDate(s.date)}</div><div class="what">Repos. Rien à faire.</div></div><span></span></div>`;
   }
   const skipped = state.skipped[s.id];
-  if (s.extra && !done && !skipped) return dualRow(s, opts);
+  if (s.extra && !settled(s.id) && !skipped) return dualRow(s, opts);
   const d = state.done[s.id] || {};
   const where = d.where ? `<span class="stats-line where-line">${KNEE[d.knee]} : ${esc(d.where)}</span>` : '';
   const note = READONLY && d.stats && d.stats.note ? `<span class="stats-line">« ${esc(d.stats.note)} »</span>` : '';
@@ -345,11 +349,11 @@ function viewToday() {
 
   const list = SESSIONS.filter(counts);
   const todays = list.find(s => s.date === TODAY);
-  const upcoming = list.filter(s => s.date >= TODAY && !isDone(s.id) && !state.skipped[s.id]);
-  const doneToday = todays && isDone(todays.id) ? todays : null;
+  const upcoming = list.filter(s => s.date >= TODAY && !settled(s.id) && !state.skipped[s.id]);
+  const doneToday = todays && settled(todays.id) ? todays : null;
   const skippedToday = todays && !doneToday && state.skipped[todays.id] ? todays : null;
   const hero = todays && !doneToday && !skippedToday ? todays : upcoming[0];
-  const late = list.filter(s => s.date < TODAY && !isDone(s.id) && !state.skipped[s.id]);
+  const late = list.filter(s => s.date < TODAY && !settled(s.id) && !state.skipped[s.id]);
   const nextUp = upcoming.filter(s => !hero || s.id !== hero.id).slice(0, 2);
 
   const alertK = kneeAlert();
@@ -763,30 +767,32 @@ function ptOf(id) {
   if (state.skipped[id]) return { run: 's', renfo: 's' };
   return { run: null, renfo: null };
 }
-// La séance est « faite » quand les deux parties sont tranchées et qu'au moins une est faite ; « passée » si les deux sont passées ; sinon en cours.
+// Dès qu'une partie est faite, la séance existe (stats et genoux se saisissent tout de suite). Elle reste « en cours » tant que l'autre partie n'est pas tranchée.
+const inProgress = id => { const p = state.pt[id]; return !!p && !(p.run && p.renfo); };
+const settled = id => isDone(id) && !inProgress(id);
 function settleParts(id) {
   const p = state.pt[id];
   if (!p || (!p.run && !p.renfo)) { delete state.pt[id]; delete state.done[id]; delete state.skipped[id]; return; }
-  if (p.run && p.renfo) {
-    if (p.run === 's' && p.renfo === 's') { delete state.done[id]; state.skipped[id] = true; return; }
+  const both = !!(p.run && p.renfo);
+  if (both && p.run === 's' && p.renfo === 's') { delete state.done[id]; state.skipped[id] = true; return; }
+  delete state.skipped[id];
+  if (p.run === 'd' || p.renfo === 'd') {
     const d = { ...(state.done[id] || { t: new Date().toISOString(), knee: null }) };
-    delete state.skipped[id];
-    if (p.run === 'd' && p.renfo === 'd') delete d.parts; else d.parts = { run: p.run === 'd', renfo: p.renfo === 'd' };
-    if (p.run !== 'd') delete d.stats;
+    if (both && !(p.run === 'd' && p.renfo === 'd')) d.parts = { run: p.run === 'd', renfo: p.renfo === 'd' }; else delete d.parts;
+    if (p.run !== 'd') { delete d.stats; delete d.loc; }
     state.done[id] = d;
-  } else { delete state.done[id]; delete state.skipped[id]; }
+  } else delete state.done[id];
 }
 function setPart(id, part, val) {
   const p = { ...ptOf(id) }; p[part] = val || null;
   state.pt[id] = p;
-  const was = isDone(id);
   settleParts(id); touch(id); save(); render();
-  if (!was && isDone(id) && !READONLY) openKnee(id, true);
+  if (!READONLY && val === 'd' && (part === 'run' || p.run === 's')) openKnee(id, true);
 }
 function toggle(id) {
   const sess = SESSIONS.find(x => x.id === id);
   if (sess && sess.extra) { // vendredi : le rond du Plan valide ou annule les deux parties
-    if (isDone(id)) { delete state.pt[id]; delete state.done[id]; touch(id); save(); render(); return; }
+    if (settled(id)) { delete state.pt[id]; delete state.done[id]; touch(id); save(); render(); return; }
     state.pt[id] = { run: 'd', renfo: 'd' }; settleParts(id); touch(id); save(); render(); openKnee(id, true); return;
   }
   if (state.done[id]) { delete state.done[id]; touch(id); save(); render(); return; }
