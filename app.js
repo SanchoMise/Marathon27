@@ -251,7 +251,7 @@ const exosFor = s => {
     alt,
     ['Hip thrust à la machine', '12 répétitions, tu augmentes la charge petit à petit', null, true],
     ['Mollets debout', '15 répétitions'],
-    ['Gainage', 'planche 30 s, puis planche latérale 20 s de chaque côté', [['Gainage', [30, 5, 20, 5, 20], ['Planche', 'Récup', 'Latérale 1/2', 'Récup', 'Latérale 2/2']]]],
+    ['Gainage', 'planche 30 s, puis latérale 20 s de chaque côté : le chrono enchaîne les séries, 10 s de récup entre elles', chainGainage],
   ];
 };
 const setsOf = s => (s.title.match(/(\d) séries/) || [])[1] ? +s.title.match(/(\d) séries/)[1] : 1; // « léger » : 1 série
@@ -931,8 +931,22 @@ const EXOS_B = [
   ['Hip thrust à la machine', '12 répétitions, charge qui monte petit à petit', null, true],
   ['Marche latérale avec élastique', '12 pas de chaque côté'],
   ['Mollets debout', '15 répétitions'],
-  ['Planche', '2 × 30 s avec 5 s de récup entre les deux', [['Planche', [30, 5, 30], ['Planche 1/2', 'Récup', 'Planche 2/2']]]],
+  ['Planche', '30 s par série : le chrono enchaîne les séries, 10 s de récup entre elles', chainPlanche],
 ];
+// Chrono unique pour toutes les séries : effort(s), petite récup dans la série, 10 s de récup entre les séries.
+function timerChain(sets, unit) { // unit : [[nom, secondes], ...] ; 5 s de récup entre deux efforts d'une même série
+  const steps = [], names = [];
+  for (let k = 1; k <= sets; k++) {
+    if (k > 1) { steps.push(10); names.push('Récup'); }
+    unit.forEach(([nom, sec], j) => {
+      if (j > 0) { steps.push(5); names.push('Récup'); }
+      steps.push(sec); names.push(sets > 1 ? `S${k} ${nom}` : nom);
+    });
+  }
+  return [steps, names];
+}
+function chainPlanche(n) { const [st, nm] = timerChain(n, [['Planche', 30]]); return [['Planche', st, nm]]; }
+function chainGainage(n) { const [st, nm] = timerChain(n, [['Planche', 30], ['Latérale 1', 20], ['Latérale 2', 20]]); return [['Gainage', st, nm]]; }
 function renfoOf(s) {
   if (s.type === 'renfo' && s.day === 'lun') return { label: 'Renfo A', sets: setsOf(s), rest: 90, exos: exosFor(s), finish: 'Terminer la séance', closes: true };
   if (s.extra) return { label: 'Renfo B', sets: 2, rest: 60, exos: EXOS_B, finish: 'Renfo terminé', closes: false };
@@ -1056,7 +1070,8 @@ function renderRenfo() {
     const wv = saved != null ? saved : last;
     const weight = load ? `<label class="rx-w"><span class="sr">Charge de ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" inputmode="decimal" autocomplete="off" placeholder="–" value="${wv != null ? fmtKg(wv) : ''}"><em>kg</em></label>` : '';
     const hint = last != null ? `<small class="rx-last">Dernière fois : ${fmtKg(last)} kg</small>` : '';
-    const tb = (timers || []).map(([label, steps, names], j) => {
+    const tspec = typeof timers === 'function' ? timers(r.sets) : (timers || []);
+    const tb = tspec.map(([label, steps, names], j) => {
       const work = steps.filter((_, x) => x % 2 === 0), total = steps.reduce((p, q) => p + q, 0);
       const idle = work.length > 1 ? (work.every(w => w === work[0]) ? `${work.length}×${work[0]} s` : fmtClock(total)) : `${work[0]} s`;
       return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-steps="${steps.join(',')}" data-names="${(names || []).join('|')}" data-label="${esc(label)}" data-l="${idle}" aria-label="Chrono ${esc(label)}, ${total} secondes en tout${steps.length > 1 ? ', récupérations comprises' : ''}"><small>${esc(label)}</small><b>${idle}</b></button>`;
