@@ -392,3 +392,7 @@ button.rx-sum:active { transform: scale(.985); }
 .prow > span > .what, .prow > span > .stats-line { display: block; }
 
 .tbtn small { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+
+/* Mise à jour disponible */
+.upd { position: fixed; left: 50%; transform: translateX(-50%); top: calc(10px + env(safe-area-inset-top)); width: min(calc(100% - 24px), 496px); z-index: 80; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 18px; background: var(--nav-bg); color: var(--nav-ink); box-shadow: 0 10px 30px rgba(0,0,0,.35); font-size: 15px; }
+.upd .mini { background: var(--peach); border-color: var(--peach); color: var(--navy); }

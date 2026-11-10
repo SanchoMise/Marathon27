@@ -1,9 +1,10 @@
 // Hors ligne : l'app (page, styles, scripts, plan, icônes, polices vues) est gardée en mémoire.
 // Réseau d'abord avec un délai court (3,5 s), puis copie en mémoire : en mode avion ou avec un mauvais réseau, l'accueil s'affiche quand même.
-const V = 'm27-v3';
+const V = 'm27-v4';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/plan.json', '/manifest.webmanifest',
   '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png', '/icons/favicon-32.png', '/icons/favicon-16.png', '/favicon.ico'];
 const WAIT = 3500;
+const tell = () => self.clients.matchAll().then(cs => cs.forEach(c => c.postMessage({ type: 'update' })));
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(V).then(c => Promise.allSettled(SHELL.map(u => c.add(u)))).then(() => self.skipWaiting()));
@@ -24,7 +25,11 @@ self.addEventListener('fetch', e => {
     } catch (err) {
       const hit = (await cache.match(req, { ignoreSearch: true })) ||
         (req.mode === 'navigate' ? (await cache.match('/index.html')) || (await cache.match('/')) : undefined);
-      if (hit) return hit;
+      if (hit) {
+        // On a servi la copie en mémoire parce que le réseau était lent : si la version fraîche arrive ensuite, on prévient la page.
+        net.then(r => { if (r && r.ok && (req.mode === 'navigate' || /\/(app\.js|styles\.css|plan\.json)$/.test(new URL(req.url).pathname))) tell(); }).catch(() => {});
+        return hit;
+      }
       return net; // rien en mémoire : on attend le réseau
     }
   })());

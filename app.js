@@ -1,5 +1,6 @@
 // Marathon 27 · suivi de prépa. Site statique, progression en localStorage.
 const KEY = 'marathon27:v1';
+const APP_VERSION = '10 nov. 2026 · b'; // à changer à chaque mise en ligne : permet de voir quelle version tourne sur le téléphone
 // Lien de lecture seule : ?lecture=CODE. On affiche la progression partagée, sans jamais rien écrire.
 const SHARE = (location.pathname.match(/^\/suivi\/([A-Za-z0-9-]{16,64})\/?$/) || [])[1] || new URLSearchParams(location.search).get('lecture');
 const READONLY = !!SHARE;
@@ -607,7 +608,8 @@ function viewMoreFull() {
     <p class="small muted" id="io-msg" role="status"></p>
     <div class="btns"><button class="btn small line" data-a="reset">Tout effacer</button></div>
   </div></details>
-  <p class="small muted" style="margin-top:20px">Ce plan est général. Il ne remplace pas l’avis de ton kiné.</p>`;
+  <p class="small muted" style="margin-top:20px">Ce plan est général. Il ne remplace pas l’avis de ton kiné.</p>
+  <p class="small muted">Version ${APP_VERSION}</p>`;
 }
 
 /* ---------- Synchronisation (Upstash via /api/sync) ---------- */
@@ -1218,6 +1220,15 @@ function rebuild() {
   SESSIONS = WEEKS.flatMap(w => w.sessions);
 }
 
+function showUpdate() {
+  if ($('#upd')) return;
+  const d = document.createElement('div');
+  d.id = 'upd'; d.className = 'upd'; d.setAttribute('role', 'status');
+  d.innerHTML = '<span><b>Nouvelle version disponible.</b></span><button type="button" class="mini" id="upd-go">Recharger</button>';
+  document.body.appendChild(d);
+  $('#upd-go').onclick = () => location.reload();
+}
+
 /* ---------- Routeur ---------- */
 const VIEWS = { today: viewToday, plan: viewPlan, profile: viewProfile, more: viewMore };
 function route() { const r = location.hash.slice(1); return VIEWS[r] ? r : 'today'; }
@@ -1252,7 +1263,14 @@ window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); }
     load();
     if (READONLY) { const m = document.querySelector('link[rel=manifest]'); if (m) m.remove(); } // pas d'installation de la vue partagée comme app
     if (READONLY) { render(); await refreshShared(); } else { render(); syncNow(true); }
-    if (!READONLY && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if (!READONLY && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      const had = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+      }).catch(() => {});
+      navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'update') showUpdate(); });
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) showUpdate(); });
+    }
   } catch (e) {
     $('#app').innerHTML = '<p style="padding:24px">Impossible de charger le plan. Vérifie ta connexion et recharge la page.</p>';
   }
