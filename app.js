@@ -1,6 +1,6 @@
 // Marathon 27 · suivi de prépa. Site statique, progression en localStorage.
 const KEY = 'marathon27:v1';
-const APP_VERSION = '10 nov. 2026 · b'; // à changer à chaque mise en ligne : permet de voir quelle version tourne sur le téléphone
+const APP_VERSION = '14 nov. 2026 · d'; // à changer à chaque mise en ligne : permet de voir quelle version tourne sur le téléphone
 // Lien de lecture seule : ?lecture=CODE. On affiche la progression partagée, sans jamais rien écrire.
 const SHARE = (location.pathname.match(/^\/suivi\/([A-Za-z0-9-]{16,64})\/?$/) || [])[1] || new URLSearchParams(location.search).get('lecture');
 const READONLY = !!SHARE;
@@ -290,16 +290,18 @@ const partsLine = id => {
 };
 // Vendredi non tranché : deux lignes, une par partie, chacune avec son rond
 function dualRow(s, opts) {
-  const p = ptOf(s.id), t = TYPES[s.type];
+  const p = ptOf(s.id), t = TYPES[s.type], d = state.done[s.id] || {};
   const part = (k, label) => {
-    const v = p[k];
+    const v = p[k], runDone = k === 'run' && v === 'd';
     const ctl = READONLY
-      ? `<span class="check ro ${v === 's' ? 'skipped' : ''}" role="img" aria-label="${v === 'd' ? 'Faite' : v === 's' ? 'Passée' : 'À faire'}">${v === 's' ? I.cross : I.check}</span>`
-      : `${opts.late && !v ? `<button class="mini" data-a="part" data-id="${s.id}" data-p="${k}" data-v="s">Passer</button>` : ''}<button class="check ${v === 's' ? 'skipped' : ''}" data-a="part" data-id="${s.id}" data-p="${k}" data-v="${v === 'd' ? '' : 'd'}" aria-pressed="${v === 'd'}" aria-label="${v === 'd' ? 'Annuler' : v === 's' ? 'Passée, valider' : 'Valider'} : ${esc(label)}, ${fmtDate(s.date)}">${v === 's' ? I.cross : I.check}</button>`;
-    const sl = k === 'run' && v === 'd' ? statsLine(s.id) : '';
-    const txt = k === 'run' && v === 'd' && !READONLY
-      ? `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails de la course"><span class="what">${esc(label)}</span><span class="stats-line ${sl ? '' : 'hint'}">${esc(sl || 'Ajouter mes stats ›')}</span></button>`
-      : `<span><span class="what">${esc(label)}</span>${sl ? `<span class="stats-line">${esc(sl)}</span>` : ''}</span>`;
+      ? `${runDone ? kneeTag(s.id) : ''}<span class="check ro ${v === 's' ? 'skipped' : ''}" role="img" aria-label="${v === 'd' ? 'Faite' : v === 's' ? 'Passée' : 'À faire'}">${v === 's' ? I.cross : I.check}</span>`
+      : `${runDone ? kneeTag(s.id) : ''}${opts.late && !v ? `<button class="mini" data-a="part" data-id="${s.id}" data-p="${k}" data-v="s">Passer</button>` : ''}<button class="check ${v === 's' ? 'skipped' : ''}" data-a="part" data-id="${s.id}" data-p="${k}" data-v="${v === 'd' ? '' : 'd'}" aria-pressed="${v === 'd'}" aria-label="${v === 'd' ? 'Annuler' : v === 's' ? 'Passée, valider' : 'Valider'} : ${esc(label)}, ${fmtDate(s.date)}">${v === 's' ? I.cross : I.check}</button>`;
+    const sl = runDone ? statsLine(s.id) : '';
+    const wh = runDone && d.where ? `<span class="stats-line where-line">${KNEE[d.knee]} : ${esc(d.where)}</span>` : '';
+    const nt = runDone && READONLY && d.stats && d.stats.note ? `<span class="stats-line">« ${esc(d.stats.note)} »</span>` : '';
+    const txt = runDone && !READONLY
+      ? `<button type="button" class="row-main" data-a="knee" data-id="${s.id}" aria-label="Modifier les détails de la course"><span class="what">${esc(label)}</span><span class="stats-line ${sl ? '' : 'hint'}">${esc(sl || 'Ajouter mes stats ›')}</span>${wh}</button>`
+      : `<span><span class="what">${esc(label)}</span>${sl ? `<span class="stats-line">${esc(sl)}</span>` : ''}${wh}${nt}</span>`;
     return `<div class="prow ${v === 'd' ? 'is-done' : ''} ${v === 's' ? 'is-skipped' : ''}">${txt}<span class="acts">${ctl}</span></div>`;
   };
   return `<div class="row dual"><span class="stripe ${t.cls}"></span><div class="dual-body"><span class="when">${fmtDate(s.date)} · ${s.place}</span>${part('run', titleOf(s))}${part('renfo', 'Renfo B · 10 min')}</div></div>`;
@@ -312,7 +314,7 @@ function sessionRow(s, opts = {}) {
     return `<div class="row"><span class="stripe t-rest"></span><div><div class="when">${fmtDate(s.date)}</div><div class="what">Repos. Rien à faire.</div></div><span></span></div>`;
   }
   const skipped = state.skipped[s.id];
-  if (s.extra && !settled(s.id) && !skipped) return dualRow(s, opts);
+  if (s.extra) return dualRow(s, opts);
   const d = state.done[s.id] || {};
   const where = d.where ? `<span class="stats-line where-line">${KNEE[d.knee]} : ${esc(d.where)}</span>` : '';
   const note = READONLY && d.stats && d.stats.note ? `<span class="stats-line">« ${esc(d.stats.note)} »</span>` : '';
@@ -373,8 +375,8 @@ function viewToday() {
   }
   if (skippedToday) {
     html += `<div class="block-title" style="margin-bottom:8px"><h2 class="h2">Séance du jour</h2></div>
-      <div class="row"><span class="stripe ${TYPES[skippedToday.type].cls}"></span><div>${rowText(skippedToday, true)}</div>
-      <div class="acts"><button class="mini" data-a="unskip" data-id="${skippedToday.id}">Annuler</button></div></div>${cheerCard(pick(SKIP_MSG, skippedToday.id), 'skip')}`;
+      ${skippedToday.extra ? dualRow(skippedToday, {}) : `<div class="row"><span class="stripe ${TYPES[skippedToday.type].cls}"></span><div>${rowText(skippedToday, true)}</div>
+      <div class="acts"><button class="mini" data-a="unskip" data-id="${skippedToday.id}">Annuler</button></div></div>`}${cheerCard(pick(SKIP_MSG, skippedToday.id), 'skip')}`;
   }
   if (hero) {
     if (doneToday || skippedToday) html += `<div class="block-title" style="margin:22px 0 8px"><h2 class="h2">Prochaine séance</h2></div>`;
@@ -769,7 +771,8 @@ function ptOf(id) {
   if (state.skipped[id]) return { run: 's', renfo: 's' };
   return { run: null, renfo: null };
 }
-// Dès qu'une partie est faite, la séance existe (stats et genoux se saisissent tout de suite). Elle reste « en cours » tant que l'autre partie n'est pas tranchée.
+// La séance compte comme faite dès que la course est faite (stats et genoux se saisissent tout de suite), pas avant : un renfo fait sans course ne valide pas le vendredi.
+// Elle reste « en cours » tant que l'autre partie n'est pas tranchée.
 const inProgress = id => { const p = state.pt[id]; return !!p && !(p.run && p.renfo); };
 const settled = id => isDone(id) && !inProgress(id);
 function settleParts(id) {
@@ -778,7 +781,7 @@ function settleParts(id) {
   const both = !!(p.run && p.renfo);
   if (both && p.run === 's' && p.renfo === 's') { delete state.done[id]; state.skipped[id] = true; return; }
   delete state.skipped[id];
-  if (p.run === 'd' || p.renfo === 'd') {
+  if (p.run === 'd' || (both && p.renfo === 'd')) {
     const d = { ...(state.done[id] || { t: new Date().toISOString(), knee: null }) };
     if (both && !(p.run === 'd' && p.renfo === 'd')) d.parts = { run: p.run === 'd', renfo: p.renfo === 'd' }; else delete d.parts;
     if (p.run !== 'd') { delete d.stats; delete d.loc; }
@@ -907,6 +910,7 @@ document.addEventListener('click', ev => {
 document.addEventListener('submit', ev => {
   const f = ev.target.closest('#sheet-form'); if (!f) return;
   ev.preventDefault();
+  f.querySelectorAll('[data-keep]').forEach(i => { if (i.value === '') i.value = i.dataset.keep; }); // « Entrée » dans un champ vidé : on garde l'ancienne valeur
   const id = f.dataset.id, d = state.done[id]; if (!d) return closeSheet();
   const v = n => (f.elements[n] ? f.elements[n].value : '');
   const pace = String(v('pace')).trim().replace(',', ':').replace('.', ':');
@@ -919,9 +923,20 @@ document.addEventListener('submit', ev => {
   if (sessL && isRun(sessL) && !(d.parts && d.parts.run === false)) d.loc = sheetLoc; else delete d.loc;
   touch(id); save(); closeSheet(); render();
 });
-// Clavier ouvert : on amène le champ au centre de l'écran.
+// Champ numérique touché : sa valeur passe en gris dans le champ (placeholder) et le champ est vidé, donc ce qu'on tape REMPLACE la valeur.
+// Si on ressort sans rien taper, l'ancienne valeur revient. (Fonctionne pareil dans tous les navigateurs, contrairement à la sélection du texte.)
+const NUM_FIELDS = '#sheet-form input:not([name=note]):not([name=where]), .rx-wi';
 document.addEventListener('focusin', ev => {
-  if (ev.target.matches && ev.target.matches('#sheet-form.full input')) setTimeout(() => ev.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250);
+  const t = ev.target;
+  if (!(t.matches && t.matches(NUM_FIELDS))) return;
+  if (t.value !== '' && t.dataset.keep === undefined) { t.dataset.keep = t.value; t.placeholder = t.value; t.value = ''; }
+  if (t.matches('#sheet-form.full input')) setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250);
+});
+document.addEventListener('focusout', ev => {
+  const t = ev.target;
+  if (!(t.dataset && t.dataset.keep !== undefined)) return;
+  if (t.value === '') t.value = t.dataset.keep;
+  delete t.dataset.keep;
 });
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') closeSheet();
@@ -1218,6 +1233,7 @@ function rebuild() {
     return changed ? { ...w, sessions, adjusted: true } : w;
   });
   SESSIONS = WEEKS.flatMap(w => w.sessions);
+  for (const id of Object.keys(state.pt || {})) settleParts(id); // remet d'équerre un vendredi « renfo fait, course pas faite »
 }
 
 function showUpdate() {
