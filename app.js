@@ -1,6 +1,6 @@
 // Marathon 27 · suivi de prépa. Site statique, progression en localStorage.
 const KEY = 'marathon27:v1';
-const APP_VERSION = '14 nov. 2026 · d'; // à changer à chaque mise en ligne : permet de voir quelle version tourne sur le téléphone
+const APP_VERSION = '16 nov. 2026 · a'; // à changer à chaque mise en ligne : permet de voir quelle version tourne sur le téléphone
 // Lien de lecture seule : ?lecture=CODE. On affiche la progression partagée, sans jamais rien écrire.
 const SHARE = (location.pathname.match(/^\/suivi\/([A-Za-z0-9-]{16,64})\/?$/) || [])[1] || new URLSearchParams(location.search).get('lecture');
 const READONLY = !!SHARE;
@@ -844,7 +844,7 @@ const actions = {
     if (w && w.value) setWt(id, w.dataset.key, num(w.value));
     renderRenfo();
   },
-  'rx-timer': e => timerStart(e.dataset.k, e.dataset.steps.split(',').map(Number), e.dataset.names ? e.dataset.names.split('|') : []),
+  'rx-timer': e => timerStart(e.dataset.k, e.dataset.steps.split(',').map(Number), e.dataset.names ? e.dataset.names.split('|') : [], e.dataset.ends ? e.dataset.ends.split(',').map(Number) : []),
   'rx-finish': () => {
     const id = rx.id, r = renfoOf(SESSIONS.find(x => x.id === id));
     closeSheet();
@@ -952,18 +952,19 @@ const EXOS_B = [
 ];
 // Chrono unique pour toutes les séries : effort(s), petite récup dans la série, 10 s de récup entre les séries.
 function timerChain(sets, unit) { // unit : [[nom, secondes], ...] ; 5 s de récup entre deux efforts d'une même série
-  const steps = [], names = [];
+  const steps = [], names = [], ends = [];
   for (let k = 1; k <= sets; k++) {
     if (k > 1) { steps.push(10); names.push('Récup'); }
     unit.forEach(([nom, sec], j) => {
       if (j > 0) { steps.push(5); names.push('Récup'); }
       steps.push(sec); names.push(sets > 1 ? `S${k} ${nom}` : nom);
     });
+    ends.push(steps.length - 1); // étape qui termine la série k : la série se coche à ce moment-là
   }
-  return [steps, names];
+  return [steps, names, ends];
 }
-function chainPlanche(n) { const [st, nm] = timerChain(n, [['Planche', 30]]); return [['Planche', st, nm]]; }
-function chainGainage(n) { const [st, nm] = timerChain(n, [['Planche', 30], ['Latérale 1', 20], ['Latérale 2', 20]]); return [['Gainage', st, nm]]; }
+function chainPlanche(n) { const [st, nm, en] = timerChain(n, [['Planche', 30]]); return [['Planche', st, nm, en]]; }
+function chainGainage(n) { const [st, nm, en] = timerChain(n, [['Planche', 30], ['Latérale 1', 20], ['Latérale 2', 20]]); return [['Gainage', st, nm, en]]; }
 function renfoOf(s) {
   if (s.type === 'renfo' && s.day === 'lun') return { label: 'Renfo A', sets: setsOf(s), rest: 90, exos: exosFor(s), finish: 'Terminer la séance', closes: true };
   if (s.extra) return { label: 'Renfo B', sets: 2, rest: 60, exos: EXOS_B, finish: 'Renfo terminé', closes: false };
@@ -1016,7 +1017,22 @@ function beep(n = 3) {
       o.start(t); o.stop(t + 0.2);
     }
   } catch (e) { /* ignoré */ }
-  try { if (navigator.vibrate) navigator.vibrate(n === 1 ? [120] : [200, 100, 200]); } catch (e) { /* ignoré */ }
+}
+// Vibration : Android → navigator.vibrate ; iPhone (iOS 17.4+) → un interrupteur invisible qu'on bascule déclenche un petit retour haptique, même en mode silencieux.
+let hapticLabel = null;
+function haptic(n = 1) {
+  try {
+    if (navigator.vibrate) { navigator.vibrate(n === 1 ? [60] : [150, 90, 150, 90, 150]); return; }
+    if (!hapticLabel) {
+      hapticLabel = document.createElement('label');
+      hapticLabel.setAttribute('aria-hidden', 'true');
+      hapticLabel.style.cssText = 'position:fixed;left:-200px;top:0;width:40px;height:20px;opacity:.01;pointer-events:none';
+      const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
+      hapticLabel.appendChild(i); document.body.appendChild(hapticLabel);
+    }
+    const pulses = n === 1 ? 1 : 3;
+    for (let k = 0; k < pulses; k++) setTimeout(() => { try { hapticLabel.click(); } catch (e) { /* ignoré */ } }, k * 130);
+  } catch (e) { /* ignoré */ }
 }
 const fmtClock = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 // Un chrono = une suite d'étapes (ex. 30 s, 5 s de récup, 30 s) lancée d'un seul tap.
@@ -1031,14 +1047,22 @@ function paintTimer() {
     if (small) small.textContent = act && timer.running && timer.names[timer.phase] ? timer.names[timer.phase] : b.dataset.label;
   });
 }
+// Une étape du chrono vient de se terminer : si elle clôt une série, la série se coche toute seule.
+function stepDone(phase) {
+  const k = (timer.ends || []).indexOf(phase);
+  if (k < 0 || !rx) return;
+  const i = +String(timer.key).split('-')[0], cur = (state.ex[rx.id] || [])[i] || 0;
+  if (cur < k + 1) { setEx(rx.id, i, k + 1); renderRenfo(); }
+}
 function tickTimer() {
   if (timer.running) {
     timer.left = Math.max(0, Math.ceil((timer.end - Date.now()) / 1000));
     if (timer.left === 0) {
-      if (timer.phase < timer.steps.length - 1) { // étape suivante (récup, puis 2e effort)
-        timer.phase++; timer.left = timer.steps[timer.phase]; timer.end = Date.now() + timer.left * 1000; beep(1);
+      stepDone(timer.phase);
+      if (timer.phase < timer.steps.length - 1) { // étape suivante (récup, puis effort suivant)
+        timer.phase++; timer.left = timer.steps[timer.phase]; timer.end = Date.now() + timer.left * 1000; beep(1); haptic(1);
       } else {
-        timer.running = false; clearInterval(timer.iv); beep();
+        timer.running = false; clearInterval(timer.iv); beep(); haptic(3);
         const k = timer.key; setTimeout(() => { if (timer.key === k && !timer.running) { timer.key = null; paintTimer(); } }, 2500);
       }
     }
@@ -1046,12 +1070,13 @@ function tickTimer() {
   paintTimer();
 }
 function timerStop() { clearInterval(timer.iv); timer.running = false; timer.key = null; timer.left = 0; timer.phase = 0; paintTimer(); }
-function timerStart(key, steps, names) {
+function timerStart(key, steps, names, ends) {
   if (timer.running && timer.key === key) return timerStop(); // un second tap l'arrête
   try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) { /* ignoré */ }
   clearInterval(timer.iv);
-  Object.assign(timer, { key, steps, names, phase: 0, left: steps[0], end: Date.now() + steps[0] * 1000, running: true });
+  Object.assign(timer, { key, steps, names, ends: ends || [], phase: 0, left: steps[0], end: Date.now() + steps[0] * 1000, running: true });
   timer.iv = setInterval(tickTimer, 250); tickTimer();
+  haptic(1); // début : petit retour haptique (tap de l'utilisateur)
   wakeOn(); // l'écran reste allumé pendant le chrono
 }
 // Écran allumé : on redemande le verrou s'il a été relâché (retour sur l'app, mise en veille…)
@@ -1088,10 +1113,10 @@ function renderRenfo() {
     const weight = load ? `<label class="rx-w"><span class="sr">Charge de ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" inputmode="decimal" autocomplete="off" placeholder="–" value="${wv != null ? fmtKg(wv) : ''}"><em>kg</em></label>` : '';
     const hint = last != null ? `<small class="rx-last">Dernière fois : ${fmtKg(last)} kg</small>` : '';
     const tspec = typeof timers === 'function' ? timers(r.sets) : (timers || []);
-    const tb = tspec.map(([label, steps, names], j) => {
+    const tb = tspec.map(([label, steps, names, ends], j) => {
       const work = steps.filter((_, x) => x % 2 === 0), total = steps.reduce((p, q) => p + q, 0);
       const idle = work.length > 1 ? (work.every(w => w === work[0]) ? `${work.length}×${work[0]} s` : fmtClock(total)) : `${work[0]} s`;
-      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-steps="${steps.join(',')}" data-names="${(names || []).join('|')}" data-label="${esc(label)}" data-l="${idle}" aria-label="Chrono ${esc(label)}, ${total} secondes en tout${steps.length > 1 ? ', récupérations comprises' : ''}"><small>${esc(label)}</small><b>${idle}</b></button>`;
+      return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-steps="${steps.join(',')}" data-names="${(names || []).join('|')}" data-ends="${(ends || []).join(',')}" data-label="${esc(label)}" data-l="${idle}" aria-label="Chrono ${esc(label)}, ${total} secondes en tout${steps.length > 1 ? ', récupérations comprises' : ''}"><small>${esc(label)}</small><b>${idle}</b></button>`;
     }).join('');
     return `<li class="rx-item ${full ? 'is-full' : ''}"><button type="button" class="rx-check" data-a="rx-all" data-i="${i}" aria-pressed="${full}" aria-label="${full ? 'Décocher' : 'Cocher'} : ${esc(name)}">${I.check}</button>
       <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${weight}${tb ? `<div class="tbtns">${tb}</div>` : ''}</div>${hint}</div></li>`;
