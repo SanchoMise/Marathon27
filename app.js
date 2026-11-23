@@ -1,6 +1,6 @@
 // Marathon 27 · suivi de prépa. Site statique, progression en localStorage.
 const KEY = 'marathon27:v1';
-const APP_VERSION = '16 nov. 2026 · a'; // à changer à chaque mise en ligne : permet de voir quelle version tourne sur le téléphone
+const APP_VERSION = '23 nov. 2026 · a'; // à changer à chaque mise en ligne : permet de voir quelle version tourne sur le téléphone
 // Lien de lecture seule : ?lecture=CODE. On affiche la progression partagée, sans jamais rien écrire.
 const SHARE = (location.pathname.match(/^\/suivi\/([A-Za-z0-9-]{16,64})\/?$/) || [])[1] || new URLSearchParams(location.search).get('lecture');
 const READONLY = !!SHARE;
@@ -87,7 +87,13 @@ function normalize(o) {
   for (const [id, w] of Object.entries((o && o.wt) || {})) {
     if (!((!ids.size || ids.has(id)) && w && typeof w === 'object')) continue;
     const c = {};
-    for (const [k, v] of Object.entries(w)) { const x = Number(v); if (k.length <= 60 && Number.isFinite(x) && x > 0 && x <= 500) c[k] = x; }
+    const sess = ids.size ? SESSIONS.find(x => x.id === id) : null, rr = sess && renfoOf(sess), nSets = (rr && rr.sets) || 3;
+    for (const [k, v] of Object.entries(w)) {
+      if (k.length > 60) continue;
+      const arr = (Array.isArray(v) ? v : Array(nSets).fill(v)).slice(0, 8).map(x => { const n = Number(x); return Number.isFinite(n) && n > 0 && n <= 500 ? n : 0; });
+      while (arr.length && !arr[arr.length - 1]) arr.pop();
+      if (arr.length) c[k] = arr;
+    }
     if (Object.keys(c).length) r.wt[id] = c;
   }
   r.pt = {};
@@ -144,7 +150,7 @@ function mergeStates(a, b) {
     if (src.done[id]) r.done[id] = { ...src.done[id] };
     else if (src.skipped[id]) r.skipped[id] = true;
     if (src.ex && src.ex[id]) r.ex[id] = [...src.ex[id]];
-    if (src.wt && src.wt[id]) r.wt[id] = { ...src.wt[id] };
+    if (src.wt && src.wt[id]) r.wt[id] = Object.fromEntries(Object.entries(src.wt[id]).map(([k, a]) => [k, [...a]]));
     if (src.pt && src.pt[id]) r.pt[id] = { ...src.pt[id] };
   }
   return r;
@@ -833,15 +839,15 @@ const actions = {
     const id = rx.id, i = +e.dataset.i, k = +e.dataset.k;
     const cur = (state.ex[id] || [])[i] || 0;
     setEx(id, i, cur >= k ? k - 1 : k);
-    const w = e.closest('.rx-item') && e.closest('.rx-item').querySelector('.rx-wi'); // la charge saisie est gardée avec la série
-    if (w && w.value) setWt(id, w.dataset.key, num(w.value));
+    const w = e.closest('.rx-line') && e.closest('.rx-line').querySelector('.rx-wi'); // la charge de cette série est gardée avec elle
+    if (w && w.value) setWt(id, w.dataset.key, +w.dataset.k, num(w.value));
     renderRenfo();
   },
   'rx-all': e => {
     const id = rx.id, i = +e.dataset.i, r = renfoOf(SESSIONS.find(x => x.id === id));
     setEx(id, i, ((state.ex[id] || [])[i] || 0) >= r.sets ? 0 : r.sets);
-    const w = e.closest('.rx-item') && e.closest('.rx-item').querySelector('.rx-wi');
-    if (w && w.value) setWt(id, w.dataset.key, num(w.value));
+    const it = e.closest('.rx-item');
+    if (it) it.querySelectorAll('.rx-wi').forEach(w => { if (w.value) setWt(id, w.dataset.key, +w.dataset.k, num(w.value)); });
     renderRenfo();
   },
   'rx-timer': e => timerStart(e.dataset.k, e.dataset.steps.split(',').map(Number), e.dataset.names ? e.dataset.names.split('|') : [], e.dataset.ends ? e.dataset.ends.split(',').map(Number) : []),
@@ -979,22 +985,27 @@ function setEx(id, i, v) {
   if (a.every(x => !x)) delete state.ex[id]; else state.ex[id] = a;
   touch(id); save();
 }
-// Charges : celle de la séance, sinon la dernière utilisée pour cet exercice (pour la remettre d'office)
-function setWt(id, key, v) {
+// Charges : un poids par série (on commence léger puis on monte). Par défaut, le poids de la même série la dernière fois.
+function setWt(id, key, k, v) {
   const w = { ...(state.wt[id] || {}) };
-  if (v > 0) w[key] = v; else delete w[key];
+  const a = [...(w[key] || [])];
+  while (a.length <= k) a.push(0);
+  a[k] = v > 0 ? v : 0;
+  while (a.length && !a[a.length - 1]) a.pop();
+  if (a.length) w[key] = a; else delete w[key];
   if (Object.keys(w).length) state.wt[id] = w; else delete state.wt[id];
   touch(id); save();
 }
-function lastWeight(key, s) {
+function lastWeights(key, s) {
   let best = null;
   for (const [id, w] of Object.entries(state.wt)) {
     const o = SESSIONS.find(x => x.id === id);
-    if (!o || o.id === s.id || o.date >= s.date || w[key] == null) continue;
-    if (!best || o.date > best.date) best = { date: o.date, kg: w[key] };
+    if (!o || o.id === s.id || o.date >= s.date || !w[key]) continue;
+    if (!best || o.date > best.date) best = { date: o.date, a: w[key] };
   }
-  return best ? best.kg : null;
+  return best ? best.a : null;
 }
+const lastNonZero = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] > 0) return a[i]; return null; };
 const fmtKg = n => String(n).replace('.', ',');
 function renfoSummary(s) {
   const r = renfoOf(s); if (!r || READONLY) return '';
@@ -1106,12 +1117,18 @@ function renderRenfo() {
   const old = $('.rx-panel'), top = old ? old.scrollTop : 0;
   const items = r.exos.map(([name, det, timers, load], i) => {
     const full = cnt[i] >= r.sets;
-    const sets = Array.from({ length: r.sets }, (_, k) => `<button type="button" class="rx-set" data-a="rx-set" data-i="${i}" data-k="${k + 1}" aria-pressed="${cnt[i] > k}" aria-label="Série ${k + 1} sur ${r.sets} : ${esc(name)}">${k + 1}</button>`).join('');
-    const saved = (state.wt[s.id] || {})[name];
-    const last = load && saved == null ? lastWeight(name, s) : null;
-    const wv = saved != null ? saved : last;
-    const weight = load ? `<label class="rx-w"><span class="sr">Charge de ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" inputmode="decimal" autocomplete="off" placeholder="–" value="${wv != null ? fmtKg(wv) : ''}"><em>kg</em></label>` : '';
-    const hint = last != null ? `<small class="rx-last">Dernière fois : ${fmtKg(last)} kg</small>` : '';
+    const setBtn = k => `<button type="button" class="rx-set" data-a="rx-set" data-i="${i}" data-k="${k + 1}" aria-pressed="${cnt[i] > k}" aria-label="Série ${k + 1} sur ${r.sets} : ${esc(name)}">${k + 1}</button>`;
+    const sets = Array.from({ length: r.sets }, (_, k) => setBtn(k)).join('');
+    const mine = (state.wt[s.id] || {})[name] || [], prev = load ? lastWeights(name, s) : null;
+    let usedPrev = false;
+    const lines = load ? Array.from({ length: r.sets }, (_, k) => {
+      const saved = mine[k] > 0 ? mine[k] : null;
+      const fb = saved == null && prev ? (prev[k] > 0 ? prev[k] : lastNonZero(prev)) : null;
+      if (fb != null) usedPrev = true;
+      const v = saved != null ? saved : fb;
+      return `<div class="rx-line">${setBtn(k)}<label class="rx-w"><span class="sr">Charge série ${k + 1} : ${esc(name)}</span><input class="rx-wi" data-key="${esc(name)}" data-k="${k}" inputmode="decimal" autocomplete="off" placeholder="–" value="${v != null ? fmtKg(v) : ''}"><em>kg</em></label></div>`;
+    }).join('') : '';
+    const hint = usedPrev ? `<small class="rx-last">Dernière fois : ${prev.filter(x => x > 0).map(fmtKg).join(' · ')} kg</small>` : '';
     const tspec = typeof timers === 'function' ? timers(r.sets) : (timers || []);
     const tb = tspec.map(([label, steps, names, ends], j) => {
       const work = steps.filter((_, x) => x % 2 === 0), total = steps.reduce((p, q) => p + q, 0);
@@ -1119,7 +1136,7 @@ function renderRenfo() {
       return `<button type="button" class="tbtn" data-a="rx-timer" data-k="${i}-${j}" data-steps="${steps.join(',')}" data-names="${(names || []).join('|')}" data-ends="${(ends || []).join(',')}" data-label="${esc(label)}" data-l="${idle}" aria-label="Chrono ${esc(label)}, ${total} secondes en tout${steps.length > 1 ? ', récupérations comprises' : ''}"><small>${esc(label)}</small><b>${idle}</b></button>`;
     }).join('');
     return `<li class="rx-item ${full ? 'is-full' : ''}"><button type="button" class="rx-check" data-a="rx-all" data-i="${i}" aria-pressed="${full}" aria-label="${full ? 'Décocher' : 'Cocher'} : ${esc(name)}">${I.check}</button>
-      <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span><div class="rx-row"><div class="rx-sets">${sets}</div>${weight}${tb ? `<div class="tbtns">${tb}</div>` : ''}</div>${hint}</div></li>`;
+      <div class="rx-main"><b>${esc(name)}</b><span>${esc(det)}</span>${load ? `<div class="rx-lines">${lines}</div>` : `<div class="rx-row"><div class="rx-sets">${sets}</div>${tb ? `<div class="tbtns">${tb}</div>` : ''}</div>`}${hint}</div></li>`;
   }).join('');
   $('#sheet-root').innerHTML = `<div class="scrim full" data-a="close-sheet"><div class="sheet full rx-panel" role="dialog" aria-modal="true" aria-labelledby="rx-t">
     <button type="button" class="x" data-a="close-sheet" aria-label="Fermer">✕</button>
@@ -1135,7 +1152,7 @@ function renderRenfo() {
 }
 document.addEventListener('input', ev => {
   const t = ev.target;
-  if (rx && t.matches && t.matches('.rx-wi')) setWt(rx.id, t.dataset.key, num(t.value));
+  if (rx && t.matches && t.matches('.rx-wi')) setWt(rx.id, t.dataset.key, +t.dataset.k, num(t.value));
 });
 
 /* ---------- Séances manquées : rappel ---------- */
